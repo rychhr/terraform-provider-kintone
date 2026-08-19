@@ -65,16 +65,20 @@ naming convention; decide names against that convention rather than case by case
 
 ## kintone API constraints that shape the code
 
-These are non-negotiable properties of the kintone API. Every resource must respect them.
+These are non-negotiable properties of the kintone API. Every resource must respect them. The rules below
+are the short form; [docs/design/kintone-api-constraints.md](docs/design/kintone-api-constraints.md) carries
+the endpoints, the reasoning, the open questions, and — for every claim — whether it was measured against a
+live environment or read in published documentation. Consult it before implementing against any of these.
 
 1. **Two-phase writes.** App settings are written to the *preview* environment, then deployed via
-   `POST /k/v1/preview/app/deploy.json` and polled until `PROCESSING` becomes `SUCCESS` or `FAIL`. Reads
-   for drift detection use the *live* environment as the source of truth.
+   `POST /k/v1/preview/app/deploy.json` and polled until `PROCESSING` reaches a terminal status. The
+   terminal statuses are `SUCCESS`, `FAIL` and `CANCEL` — all three must be handled. Reads for drift
+   detection use the *live* environment as the source of truth.
 2. **No app deletion API.** A resource `Delete` must only remove state and warn about manual cleanup. Never
    implement physical deletion.
 3. **App creation requires password authentication** (`X-Cybozu-Authorization: base64(login:password)`);
-   API tokens cannot create apps. Users with 2FA enabled cannot authenticate this way, so a dedicated
-   service account is assumed.
+   API tokens cannot create apps, and cannot call `GET /k/v1/apps.json` either. Users with 2FA enabled
+   cannot authenticate this way, so a dedicated service account is assumed.
 4. **Concurrency.** Operations on the same app must be serialized by a per-app mutex. The client retries
    429 responses with exponential backoff for all methods. It retries 5xx responses, transport errors, and
    response-read errors only for idempotent methods, so that replaying a create-style POST cannot duplicate

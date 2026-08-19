@@ -93,7 +93,9 @@ binary must therefore be named `terraform-provider-kintone`. With a development 
 `terraform init` is skipped for this provider — run `terraform plan` directly.
 
 Repository conventions, build and test commands, and the API constraints that implementations must respect
-are documented in [AGENTS.md](AGENTS.md).
+are documented in [AGENTS.md](AGENTS.md). The kintone API behavior behind the prerequisites above — the
+preview-and-deploy path, the missing deletion API, and the authentication rules — is written up with its
+sources in [docs/design/kintone-api-constraints.md](docs/design/kintone-api-constraints.md).
 
 ## Contributing
 
