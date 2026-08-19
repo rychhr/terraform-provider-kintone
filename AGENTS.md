@@ -155,6 +155,11 @@ artifact, or a log.
   the change (`feat/`, `fix/`, `docs/`, `test/`, `refactor/`, `chore/`, `ci/`, `build/`, `perf/`). Describe
   the change, not the author or the tool — no `agent/` prefixes, usernames, or agent names.
 - Write commit messages in English using Conventional Commits. Keep commits focused.
+- **Never publish an agent session link.** No `https://claude.ai/code/session_...` URL and no
+  `Claude-Session:` trailer belongs in a commit message, a pull request body or comment, an issue body or
+  comment, or a file in this repository. Agent tooling adds these by default; strip them. They name the tool
+  rather than the change, for the same reason branch names may not, and this repository is public — a link
+  published once stays retrievable by SHA even after the text is edited.
 - Pull requests and issues are written in English. A pull request should summarize the behavior change,
   reference the relevant issue or plan task, list the verification commands that were run, and call out
   credentials, manual cleanup, generated documentation, or state-migration effects. Include HCL examples
@@ -179,8 +184,12 @@ credential is the only real remedy; removing the commit is not one.
   granted for an earlier push, or a command sandbox approval does not authorize a new push.
 - Before asking for that approval, review exactly what would become public: run `git status --porcelain`
   and `git diff --cached`, and confirm the change set carries no credential, internal planning document,
-  private repository name, local absolute path, or environment-specific hostname. Verify that files
-  excluded by `.gitignore` — `.env.local` above all — are still untracked rather than assuming they are.
+  private repository name, local absolute path, environment-specific hostname, or agent session link. Verify
+  that files excluded by `.gitignore` — `.env.local` above all — are still untracked rather than assuming
+  they are.
+- The same review covers the text that accompanies the push. Before `gh pr create`, `gh pr edit`, or
+  `gh issue edit`, grep the body you are about to publish for `claude.ai/code/session` and remove what you
+  find.
 - Review every file, not just the diff, before the first push of the repository. A file that was safe while
   the repository was empty is not automatically safe once it is published.
 
