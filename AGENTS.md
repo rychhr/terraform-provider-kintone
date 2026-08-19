@@ -79,10 +79,14 @@ live environment or read in published documentation. Consult it before implement
 3. **App creation requires password authentication** (`X-Cybozu-Authorization: base64(login:password)`);
    API tokens cannot create apps, and cannot call `GET /k/v1/apps.json` either. Users with 2FA enabled
    cannot authenticate this way, so a dedicated service account is assumed.
-4. **Concurrency.** Operations on the same app must be serialized by a per-app mutex. The client retries
-   429 responses with exponential backoff for all methods. It retries 5xx responses, transport errors, and
-   response-read errors only for idempotent methods, so that replaying a create-style POST cannot duplicate
-   side effects.
+4. **Concurrency.** Operations on the same app must be serialized by a per-app mutex, held from the first
+   preview write until the deploy poll reaches a terminal status and the live read-back is done. The client
+   retries 429 responses with exponential backoff for all methods. It retries 5xx responses, transport
+   errors, and response-read errors only for idempotent methods, so that replaying a create-style POST
+   cannot duplicate side effects — and not even then when the payload is single-use.
+5. **Revision conflicts are HTTP 409 with a `GAIA_CO` code**, measured as `GAIA_CO03` rather than the
+   `GAIA_CO02` that circulates in community material. Detect them by the status or the prefix, never by an
+   exact code.
 
 Keep API IDs and revisions as strings — kintone returns numeric values as JSON strings.
 

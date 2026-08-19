@@ -15,6 +15,7 @@ Every claim carries one marker. They are not interchangeable.
 | Marker | Meaning |
 | --- | --- |
 | `[measured: dev 2026-08-19]` | Observed against this project's development environment on that date, using read-only `GET` requests only. Appendix A lists the requests and their responses. |
+| `[measured: poc]` | Measured against a live kintone environment during the proof-of-concept that preceded this repository, and reported from it. Where the measurement date is known it is given in the text. The proof-of-concept is not part of this repository, so these facts cannot be re-read here — only re-measured. |
 | `[documented: Sn]` | Stated in published Cybozu documentation. `Sn` indexes the source list in Appendix B. Every cited page was fetched and returned HTTP 200 on 2026-08-19. |
 | `[undocumented]` | The documentation was searched for this and does not state it. An absence claim, not a silence. |
 | `[inferred]` | A conclusion drawn in this repository from the claims around it. Not an API guarantee. |
@@ -23,10 +24,11 @@ A claim marked `[documented]` and nothing else has not been verified against a r
 marked `[measured]` and nothing else was observed once, in one environment, and may be a property of that
 environment rather than of kintone.
 
-The knowledge in this note originally came from a proof-of-concept that is not part of this repository, and
-that proof-of-concept can no longer be read. Nothing here rests on it: every claim below was re-established
-against published documentation, against the development environment, or both, and anything that could be
-established neither way is in section 7 as an open question.
+The knowledge in this note originally came from a proof-of-concept that is not part of this repository. Every
+claim that could be re-established here was re-established here, against published documentation, against the
+development environment, or both. The facts that neither route could reach — the ones that require writing to
+a real app — are carried as `[measured: poc]`, reported from that repository rather than observed here. What
+no route settled is in section 7 as an open question.
 
 ## 1. Preview and live are two environments
 
@@ -75,6 +77,22 @@ Deploy parameters worth stating exactly `[documented: S4]`:
 A multi-app deploy is all-or-nothing: if one app fails, every app named in the request is rolled back to
 its state before the call `[documented: S4]`.
 
+### Revisions
+
+A revision is one counter per app, shared by every settings API rather than one counter per settings area
+`[measured: poc 2026-07-28]`. A pre-live write advances the preview counter only: the live counter does not
+move until the deploy, and the deploy makes live catch up to preview rather than advancing the counter again
+`[measured: poc 2026-07-28]`. A pre-live write carrying a stale revision is rejected with **HTTP 409 and the
+error code `GAIA_CO03`** — not `GAIA_CO02`, the code that circulates in community material
+`[measured: poc 2026-07-28]`.
+
+The `revision` parameter of the settings PUT is therefore compared against the preview counter. Whether
+`apps[].revision` on the deploy call uses the same counter is open question 2; the proof-of-concept never
+sent that parameter, so nothing measured covers it.
+
+Detect a conflict by the 409 status or by the `GAIA_CO` prefix, never by an exact code: an implementation
+that matched `GAIA_CO02` would not have matched what was actually observed `[inferred]`.
+
 ### The poll
 
 The deploy is asynchronous. The Japanese page says so in as many words and directs the caller to the
@@ -101,6 +119,14 @@ an app whose last deploy finished long before the request returned `SUCCESS`
 `[measured: dev 2026-08-19]`. A poll loop must therefore not assume that the first response after a deploy
 call is `PROCESSING`, and must not treat `SUCCESS` as proof that its own deploy has completed — the
 revision it deployed is the only thing that identifies its own write `[inferred]`.
+
+One case where the status does not go stale was measured: a status read issued immediately after a
+`revert: true` deploy reported the revert job's `PROCESSING`, not the terminal status of the deploy before it
+— observed roughly 0.8 seconds after the call `[measured: poc 2026-07-31]`. That closes the window in which a
+poll could mistake the previous job's outcome for its own, for the revert path at least.
+
+`CANCEL` was never observed in the proof-of-concept, and whether a single-app deploy can produce it is still
+unknown `[measured: poc]`.
 
 ### Why drift-detection reads go against the live environment
 
@@ -146,7 +172,14 @@ user and system administrator within 14 days `[documented: S10]`.
 `revert: true` on the deploy endpoint is not a deletion. It discards the pre-live changes and resets them to
 the live app's current settings — the *Discard Changes* button `[documented: S4]`. What it does to an app
 that has never been deployed, and therefore has no live settings to reset to, is not documented
-`[undocumented]`.
+`[undocumented]`, but it was measured: the revert is a harmless no-op that reports `SUCCESS`, and the
+never-deployed app stays where it is `[measured: poc 2026-07-29]`. Reverting is not an escape hatch for an
+interrupted create.
+
+Note what else a revert takes with it. It cancels *all* pre-live changes on the app `[documented: S4]`, so it
+also discards a draft a person left unsaved in the kintone UI and any pre-live change another process has not
+deployed yet. A provider that reverts to clean up after its own failed deploy destroys work it never wrote
+`[inferred]`.
 
 An app created by `POST /k/v1/preview/app.json` is assigned a real app ID at creation time, before any
 deploy `[documented: S2]`. Both list and single reads return published apps only — "Note that only
@@ -245,14 +278,20 @@ permissions it needs `[inferred]`.
   until the HTTP call returns `[documented: S6]`.
 - On a revision mismatch the request fails and the settings are left unchanged `[documented: S6]`.
 
+None of the limits in this subsection has ever been observed. Neither the development environment nor the
+proof-of-concept has produced a 429 or hit the daily quota, and the proof-of-concept's client never read the
+concurrency headers at all. Treat the numbers as documentation, not as experience.
+
 ### What kintone does not document
 
 - No error code accompanies the 429; only the HTTP status is published `[undocumented]`.
 - No `Retry-After` header, no wait interval, no retry count and no backoff algorithm are prescribed. The
   only official guidance is preventative — observe the concurrency headers and shape traffic
   `[documented: S15]`.
-- No error code or message is published for the deploy-in-progress conflict or for a revision mismatch, so
-  neither can be recognised by code alone `[undocumented]`.
+- No error code or message is published for the deploy-in-progress conflict or for a revision mismatch
+  `[undocumented]`. The revision mismatch has since been measured — HTTP 409 with `GAIA_CO03`, see section 2
+  `[measured: poc 2026-07-28]` — but the deploy-in-progress conflict has not been produced deliberately by
+  anyone here, so its code remains unknown.
 - There is no published REST API error-code catalogue at all. The documented contract is only the response
   shape `{"code", "id", "message"}` `[documented: S13]`. Codes observed on the development environment
   include `CB_VA01` for a parameter-validation failure, `GAIA_AP01` with HTTP 404 for an unknown app ID,
@@ -273,11 +312,28 @@ phrase "serialise operations" and still violate the constraint, because the forb
 S6 runs until the asynchronous deploy finishes `[inferred]`. On a poll timeout the mutex is released and the
 failure surfaced — a stuck deploy must not deadlock every later operation on that app.
 
+The proof-of-concept held it wider still: through the live read-back that follows the deploy, so that another
+resource's deploy could not land between the poll and the read whose values go into state. Carry that over —
+the read-back is the write's last step, not a separate operation `[inferred]`. If a failed deploy is followed
+by a revert, the revert happens inside the same held lock and inside the same deploy timeout, five minutes in
+the proof-of-concept `[measured: poc]`.
+
+The mutex is process-local, and that is a real limit rather than an implementation detail: two Terraform
+processes against the same app are not serialised by it. Running acceptance tests in parallel processes made
+kintone reject concurrent app creation with `GAIA_DA02` `[measured: poc]`. That is a different failure from
+the deploy-in-progress conflict — it was produced by racing Add Preview App, not by writing during a deploy —
+and it is worth a note in the provider documentation rather than a retry `[inferred]`.
+
 **The client fixes its own polling cadence and timeout.** kintone documents neither, so both are provider-
 side choices rather than API contracts `[inferred]`. Two constraints bound them: a deploy takes long enough
 that a tight loop is wasteful, and the 10,000-requests-per-app daily quota above is consumed by polling,
 unlike Get Apps and Add Preview App which are excluded from it. When the timeout expires the client reports
 the app and the last observed status; it never reports success it did not observe.
+
+The proof-of-concept used a one-second interval — waiting before the first read rather than after it — and a
+five-minute deploy timeout covering the deploy and any revert that follows `[measured: poc]`. Those values
+were never tuned against measurements, so treat them as a starting point rather than a finding. A
+single-setting deploy took a few seconds there; applying several resources to one app took tens of seconds.
 
 **429 is retried with exponential backoff for every method.** Backoff is a provider-side design decision
 with no documented contract behind it; kintone neither prescribes nor forbids it `[inferred]`. Retrying it
@@ -291,6 +347,18 @@ provider cannot see whether a request that failed without a usable response reac
 `POST /k/v1/preview/app.json` after such a failure can create a second app, and section 3 established that
 the first one can never be deleted through the API — it does not even appear in the app list. The
 asymmetric policy exists because the cost of a duplicated create is permanent `[inferred]`.
+
+**HTTP idempotence is not the whole test.** The proof-of-concept narrowed several PUTs to 429-only retries
+even though PUT is idempotent, because an uncertain replay either consumes a single-use payload — an uploaded
+file's `fileKey` — or makes a subsequent revision conflict impossible to attribute `[measured: poc]`. The
+axis that actually decides the policy is therefore twofold: whether the response is a definite refusal (a 429
+is; a timeout is not), and whether the request body is safe to send twice. Retry on a definite refusal
+regardless of method; on an indefinite failure, retry only when both the method and its payload are
+replayable `[inferred]`. None of those endpoints is in the v0.1.0 surface, but the rule is what generalises.
+
+**Discard tracked revisions after a revert.** Keeping them made every later write send a stale value, and one
+failed deploy cascaded into `GAIA_CO03` conflicts on the same app for the rest of the apply
+`[measured: poc]`.
 
 The optimistic-concurrency parameter is the second line of defence. `apps[].revision` on the deploy call,
 and `revision` on the settings PUT, cause the request to fail rather than overwrite a concurrent change
@@ -332,22 +400,34 @@ question has a settled half, the settled half is named as such below.
    `[documented: S3]`. Measure both objects. Measure the read side too: whether a live read returns a
    non-empty `titleField.code` while `selectionMode` is `AUTO` decides whether an `Optional + Computed`
    attribute for the code produces a perpetual diff.
-2. **Which revision do the concurrency checks use?** Preview and live revisions diverge between a pre-live
-   write and a deploy, and neither the English nor the Japanese wording says which counter is compared —
-   for the `revision` parameter of the settings PUT or for `apps[].revision` on the deploy call. Until this
-   is measured, the safe course is to omit `apps[].revision`, which disables the check `[documented: S4]`,
-   and rely on the per-app mutex.
+
+   What is known: omitting a **top-level** property of the settings PUT preserves the server's value — the
+   proof-of-concept relied on that for `theme`, `firstMonthOfFiscalYear` and the record toggles, and its
+   acceptance tests passed `[measured: poc]`. It never sent a partial nested object at all, because its
+   schema made every child of `numberPrecision` and `titleField` required `[measured: poc]`. Do not
+   extrapolate from the top level to the children; that inference is the thing being tested.
+2. **Which revision does the deploy check?** The settings PUT is settled: it compares against the preview
+   counter, and a stale value is refused with HTTP 409 and `GAIA_CO03` (section 2). `apps[].revision` on the
+   deploy call is not — the proof-of-concept never sent it. Until it is measured, omit the parameter, which
+   disables the check `[documented: S4]`, and rely on the per-app mutex.
 3. **Does a no-op PUT increment the revision?** Relevant to any read-modify-write loop that carries a
-   revision forward, and to the "exactly one deployment per settings-only change" criterion.
-4. **What error codes surface for the deploy-in-progress conflict and for a revision mismatch?** Needed
-   before the client can map either to a Terraform diagnostic.
+   revision forward, and to the "exactly one deployment per settings-only change" criterion. The
+   proof-of-concept never found out: it compared the planned settings against state and skipped the PUT
+   entirely when nothing had changed `[measured: poc]`.
+4. **What error code surfaces for the deploy-in-progress conflict?** The revision mismatch is answered
+   (HTTP 409, `GAIA_CO03`). This one is not: nobody has deliberately written to an app mid-deploy, because
+   the mutex exists to prevent exactly that. Measure it once, so the client can tell the conflict apart from
+   an unrelated 4xx if the mutex is ever bypassed.
 5. **What deploy status does an app report when no deploy is in flight, and how long does a finished status
    remain queryable?** One observation exists (`SUCCESS`, section 2) and it is not enough to build a poll
-   loop's initial state on.
-6. **Does a never-deployed app keep its app ID forever?** That no API can remove it is settled in section 3.
-   What is not settled is whether the ID it consumed is ever reclaimed, whether the app counts against any
-   per-domain limit, and whether it can be removed from the kintone UI at all. This bounds the damage of an
-   interrupted create.
+   loop's initial state on. The proof-of-concept never asked, because it only polled after issuing a deploy.
+6. **Does a never-deployed app keep its app ID forever?** That no API can remove it is settled in section 3,
+   and a revert leaves it in place `[measured: poc 2026-07-29]`. What is not settled is whether the ID is
+   ever reclaimed, whether the app counts against any per-domain limit, and whether it can be removed from
+   the kintone UI at all. This bounds the damage of an interrupted create.
+7. **Can a single-app deploy return `CANCEL`?** Documented only as a multi-app consequence, and never
+   observed in the proof-of-concept. The client handles it either way; the answer only tells us whether that
+   branch is reachable in the v0.1.0 surface.
 
 ## Appendix A — measurements against the development environment
 
@@ -366,6 +446,28 @@ deployed. The subdomain and app IDs are omitted deliberately.
 | `GET /k/v1/app.json?id=<unknown>` | HTTP 404, `{"code":"GAIA_AP01"}`. |
 | `GET /k/v1/apps.json` with a wrong password | HTTP 401, `{"code":"CB_WA01"}`. |
 | `GET /k/v1/app/settings.json` with a token issued for another app | HTTP 400, `{"code":"GAIA_IA02"}`. |
+
+## Appendix A2 — measurements carried over from the proof-of-concept
+
+Taken in the proof-of-concept repository against a live kintone environment, and reported from it rather than
+re-observed here. They are the facts that need a write, which is why this repository could not reproduce
+them. Dates are given where they are known.
+
+| Measurement | Date |
+| --- | --- |
+| A revision is one counter per app, shared by every settings API. | 2026-07-28 |
+| A pre-live write advances the preview counter only; the deploy makes live catch up without advancing it further. | 2026-07-28 |
+| A pre-live write with a stale revision is refused with HTTP 409 and `GAIA_CO03`, not `GAIA_CO02`. | 2026-07-28 |
+| A status read issued about 0.8 s after a `revert: true` deploy reports the revert job's `PROCESSING`, not the previous job's terminal status. | 2026-07-31 |
+| A revert against a never-deployed app is a no-op that reports `SUCCESS`; the app is not removed. | 2026-07-29 |
+| Omitting a top-level property of the settings PUT preserves the server's value. Partial nested objects were never sent. | — |
+| Concurrent `POST /k/v1/preview/app.json` from parallel processes is refused with `GAIA_DA02`. | — |
+| A one-second poll interval and a five-minute deploy timeout were sufficient in practice; a single-setting deploy took a few seconds. | — |
+| `CANCEL` was never observed, and no 429 or daily-quota rejection was ever produced. | — |
+
+Not carried over: the error codes appearing in the proof-of-concept's unit tests. Its `GAIA_TM01`, `GAIA_ER01`
+and `THROTTLE` are `httptest` fixtures invented for those tests, not observations, and must not be treated as
+kintone behavior.
 
 ## Appendix B — sources
 
