@@ -1,0 +1,62 @@
+# golangci-lint v2 configuration schema. The v1 schema (top-level
+# `linters-settings`, `enable`/`disable` under `linters` only) is rejected.
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  # errcheck, govet, ineffassign, staticcheck, unused.
+  default: standard
+  enable:
+    - bodyclose
+    - copyloopvar
+    - depguard
+    - errorlint
+    - misspell
+    - nilerr
+    - unconvert
+
+  exclusions:
+    presets:
+      # v1 enabled its default exclusions unless issues.exclude-use-default was
+      # turned off; v2 makes them opt-in. Without this, errcheck reports every
+      # `defer resp.Body.Close()` in the hand-rolled net/http client.
+      - std-error-handling
+
+  settings:
+    depguard:
+      rules:
+        # internal/kintone is a Terraform-independent client for the kintone
+        # REST API. Keeping it free of Terraform imports is a hard
+        # architectural boundary, so it is enforced here rather than by
+        # convention.
+        kintone-client-layer:
+          files:
+            - "**/internal/kintone/**"
+          # depguard matches pkg as a raw string prefix, and it prefix-tests
+          # only the nearest preceding entry of the sorted deny list. Entries
+          # must therefore never extend one another: adding
+          # github.com/hashicorp/terraform-plugin-sdk beside the broad prefix
+          # below would silently shadow it. Keep one entry per module family.
+          deny:
+            # Covers terraform-plugin-{framework,go,log,sdk,testing,mux},
+            # terraform-registry-address, terraform-svchost, terraform-json,
+            # terraform-exec, and terraform itself.
+            - pkg: github.com/hashicorp/terraform
+              desc: internal/kintone must not depend on Terraform; keep provider glue in internal/provider
+            - pkg: github.com/hashicorp/hcl
+              desc: internal/kintone must not depend on Terraform; keep provider glue in internal/provider
+
+    misspell:
+      locale: US
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/rychhr/terraform-provider-kintone
