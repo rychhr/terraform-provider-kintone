@@ -5,7 +5,8 @@
 Terraform provider for kintone, published to the Terraform Registry as `rychhr/kintone`. Built on
 terraform-plugin-framework (plugin protocol v6) and licensed under MPL-2.0.
 
-**Status: pre-implementation.** The repository currently holds tooling configuration only. It is a clean
+**Status: pre-implementation.** The repository holds tooling configuration and a provider skeleton that
+compiles — no resources, data sources, or provider configuration yet. It is a clean
 rewrite of a private proof-of-concept: no code is copied across. What carries over is verified knowledge of
 the kintone REST API and the singleton-settings-resource design, restated in English.
 
@@ -24,8 +25,8 @@ pull requests — is written in English. Chat responses to the user are in Japan
 
 ## Commands
 
-The `GNUmakefile` is ported from the proof-of-concept and lands with the first implementation pull request.
-Until then these targets do not exist yet.
+The `GNUmakefile` is ported from the proof-of-concept. `release-check` and `release-snapshot` fail until
+`.goreleaser.yaml` and `scripts/verify-release-artifacts.sh` land; the other targets work today.
 
 | Command | Purpose |
 | --- | --- |
