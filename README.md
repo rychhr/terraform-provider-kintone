@@ -92,6 +92,23 @@ Terraform derives the executable name from the **last element of the source addr
 binary must therefore be named `terraform-provider-kintone`. With a development override in place,
 `terraform init` is skipped for this provider — run `terraform plan` directly.
 
+### Secret scanning hooks
+
+The repository scans commits with [gitleaks](https://github.com/gitleaks/gitleaks) through
+[pre-commit](https://pre-commit.com/), so that a credential — or an agent session link — cannot reach a
+commit. Install the hooks once per clone:
+
+```sh
+pre-commit install --hook-type pre-commit --hook-type commit-msg
+```
+
+Both hook types are needed, and `commit-msg` is not one `pre-commit install` reaches for on its own. The
+configuration asks for both, so the bare command installs both, but the explicit form above says so rather
+than relying on it. The same configuration runs in CI on every pull request — over the branch's diffs and
+commit messages, not only the final tree — so a commit that skips the hooks is caught there instead. The
+ruleset and the bypass path are described under [Secret scanning](AGENTS.md#secret-scanning) in
+`AGENTS.md`.
+
 Repository conventions, build and test commands, and the API constraints that implementations must respect
 are documented in [AGENTS.md](AGENTS.md). The kintone API behavior behind the prerequisites above — the
 preview-and-deploy path, the missing deletion API, and the authentication rules — is written up with its

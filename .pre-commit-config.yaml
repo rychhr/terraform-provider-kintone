@@ -1,0 +1,53 @@
+# Hooks that keep a secret — or an agent session link — out of a commit.
+#
+# Install them once per clone:
+#
+#     pre-commit install --hook-type pre-commit --hook-type commit-msg
+#
+# `default_install_hook_types` below makes a bare `pre-commit install` install
+# both types too, but prefer the explicit form: it does not depend on this file
+# being read as expected, and `commit-msg` is not a type pre-commit installs on
+# its own.
+#
+# Bypassing both hooks is `git commit --no-verify`. That is for a false positive
+# you have looked at and understood, not for a hurry — see the "Secret scanning"
+# section of AGENTS.md.
+#
+# Keep the `rev` below in sync with GITLEAKS_VERSION in
+# .github/workflows/secret-scan.yml, so that a commit accepted locally is not
+# rejected in CI.
+
+default_install_hook_types: [pre-commit, commit-msg]
+minimum_pre_commit_version: "3.2.0"
+
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      # Staged file content. The hook's own entry is
+      # `gitleaks git --pre-commit --redact --staged --verbose`; the argument
+      # below points it at this repository's ruleset rather than relying on
+      # gitleaks finding the file by itself.
+      #
+      # `stages` is pinned because a hook that does not declare one runs at
+      # every stage, which here means scanning the staged content a second time
+      # while the commit message is being checked.
+      - id: gitleaks
+        args: [--config, .gitleaks.toml]
+        stages: [pre-commit]
+
+      # The commit message, which the hook above cannot see: `gitleaks git`
+      # scans diffs, and a message-only hit produces no diff. `gitleaks dir`
+      # scans whatever path it is handed, and at the `commit-msg` stage
+      # pre-commit hands it the message file.
+      #
+      # This is the same repository and the same `rev` as the hook above,
+      # overriding the entry rather than declaring a local hook, so that there
+      # is one version pin to keep in sync and one environment to build.
+      - id: gitleaks
+        alias: gitleaks-commit-msg
+        name: gitleaks (commit message)
+        entry: gitleaks dir
+        args: [--config, .gitleaks.toml, --redact, --verbose, --no-banner]
+        pass_filenames: true
+        stages: [commit-msg]
