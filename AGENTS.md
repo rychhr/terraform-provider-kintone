@@ -25,8 +25,8 @@ pull requests — is written in English. Chat responses to the user are in Japan
 
 ## Commands
 
-The `GNUmakefile` is ported from the proof-of-concept. `release-check` and `release-snapshot` fail until
-`.goreleaser.yaml` and `scripts/verify-release-artifacts.sh` land; the other targets work today.
+The `GNUmakefile` keeps local and CI entry points aligned. Release snapshots build the complete Registry
+artifact matrix and verify it without a signature; tagged releases require signature verification.
 
 | Command | Purpose |
 | --- | --- |
@@ -136,9 +136,9 @@ authentication is required for app creation.
   repository rename silently changes artifact names and breaks release verification.
 - `scripts/verify-release-artifacts.sh` must expect `terraform-provider-kintone_*` artifact names.
 - The build matrix follows terraform-provider-scaffolding-framework: `goos` of freebsd, windows, linux, and
-  darwin against `goarch` of amd64, 386, arm, and arm64, with `darwin/386` and `darwin/arm` excluded via
-  `ignore` because Go does not support them. Writing the full cross product without those exclusions breaks
-  the build.
+  darwin against `goarch` of amd64, 386, arm, and arm64, with `darwin/386`, `darwin/arm`, and `windows/arm`
+  excluded via `ignore` because Go does not support them. Writing the full cross product without those
+  exclusions breaks the build.
 - Releases are created as drafts. Verify the assets with `scripts/verify-release-artifacts.sh` before
   publishing.
 

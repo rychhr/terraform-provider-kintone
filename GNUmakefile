@@ -27,12 +27,14 @@ lint:
 docs:
 	go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@$(TFPLUGINDOCS_VERSION) generate --provider-name kintone
 
-# Both release targets need .goreleaser.yaml, which does not exist yet.
+# Validate the GoReleaser configuration without building or publishing assets.
 release-check:
 	goreleaser check
 
+# Build and verify the complete local artifact set. Snapshots are deliberately
+# unsigned; release workflow verification requires the detached GPG signature.
 release-snapshot:
-	goreleaser release --snapshot --clean
-	scripts/verify-release-artifacts.sh dist
+	goreleaser release --snapshot --clean --skip=sign
+	VERIFY_RELEASE_SIGNATURE=0 scripts/verify-release-artifacts.sh dist
 
 .PHONY: default build test testacc lint docs release-check release-snapshot
