@@ -74,6 +74,27 @@ if ! output=$("$verifier" "$valid" 2>&1); then
 	exit 1
 fi
 
+portable_find_bin="$fixture_root/portable-find-bin"
+real_find=$(command -v find)
+mkdir "$portable_find_bin"
+# The wrapper variables expand when the generated script runs.
+# shellcheck disable=SC2016
+printf '%s\n' \
+	'#!/bin/sh' \
+	'set -eu' \
+	'for argument do' \
+	'if [ "$argument" = "-maxdepth" ]; then' \
+	'printf "%s\\n" "test find: -maxdepth is not supported" >&2' \
+	'exit 64' \
+	'fi' \
+	'done' \
+	"exec '$real_find' \"\$@\"" >"$portable_find_bin/find"
+chmod +x "$portable_find_bin/find"
+if ! output=$(PATH="$portable_find_bin:$PATH" "$verifier" "$valid" 2>&1); then
+	printf 'expected valid fixture to pass with POSIX find, got:\n%s\n' "$output" >&2
+	exit 1
+fi
+
 missing_archive=$(copy_fixture missing-archive)
 rm "$missing_archive/${project}_${version}_linux_arm64.zip"
 refresh_metadata "$missing_archive"

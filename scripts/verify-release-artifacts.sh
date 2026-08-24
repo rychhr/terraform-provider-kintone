@@ -32,7 +32,6 @@ require_command awk
 require_command cat
 require_command cmp
 require_command dirname
-require_command find
 require_command grep
 require_command jq
 require_command mktemp
@@ -94,7 +93,11 @@ LC_ALL=C sort -o "$expected_checksums" "$expected_checksums"
 	fi
 } | LC_ALL=C sort >"$expected_assets"
 
-find "$dist" -maxdepth 1 -type f -name "${project}_*" -exec basename {} \; >"$actual_assets"
+: >"$actual_assets"
+for asset_path in "$dist"/"${project}"_*; do
+	[ -f "$asset_path" ] || continue
+	basename "$asset_path" >>"$actual_assets"
+done
 if [ "$manifest_is_extra_file" -eq 1 ]; then
 	# GoReleaser extra_files records and uploads the renamed manifest without
 	# materializing the renamed path in dist.
