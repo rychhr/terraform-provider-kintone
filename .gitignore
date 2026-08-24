@@ -3,7 +3,7 @@
 # misc
 .DS_Store
 *.pem
-dist/
+/dist/
 
 # Terraform local state
 *.tfstate
