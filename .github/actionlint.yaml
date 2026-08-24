@@ -1,0 +1,5 @@
+paths:
+  .github/workflows/ci.yml:
+    ignore:
+      # The acceptance job is deliberately retained but cannot run yet.
+      - 'constant expression "false" in condition\. remove the if: section'

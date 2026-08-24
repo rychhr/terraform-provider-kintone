@@ -174,6 +174,9 @@ artifact, or a log.
   reference the relevant issue or plan task, list the verification commands that were run, and call out
   credentials, manual cleanup, generated documentation, or state-migration effects. Include HCL examples
   when schemas or resource behavior change.
+- Repository-facing specifications and implementation plans belong under `docs/specs/` and `docs/plans/`.
+  Never create or commit agent-, tool-, or skill-internal planning artifacts, including files under
+  `docs/superpowers/`. Rewrite durable conclusions as repository-facing documents before staging them.
 - Specs and plans are conclusion-based documents. Never record review-fix history or round-by-round
   changelogs inside them; log each review round's resolution as a pull request comment (what changed, plus
   the commit hash) and squash the branch into logical commits before merge.
@@ -249,10 +252,10 @@ credential is the only real remedy; removing the commit is not one.
   pushes implicitly, such as `gh pr create` on an unpushed branch. Permission to edit files, an approval
   granted for an earlier push, or a command sandbox approval does not authorize a new push.
 - Before asking for that approval, review exactly what would become public: run `git status --porcelain`
-  and `git diff --cached`, and confirm the change set carries no credential, internal planning document,
-  private repository name, local absolute path, environment-specific hostname, or agent session link. Verify
-  that files excluded by `.gitignore` — `.env.local` above all — are still untracked rather than assuming
-  they are.
+  and `git diff --cached`, and confirm the change set carries no credential, internal planning document
+  (including the agent-, tool-, or skill-internal artifacts defined above), private repository name, local
+  absolute path, environment-specific hostname, or agent session link. Verify that files excluded by
+  `.gitignore` — `.env.local` above all — are still untracked rather than assuming they are.
 - The same review covers the text that accompanies the push. Before `gh pr create`, `gh pr edit`, or
   `gh issue edit`, grep the body you are about to publish for `claude.ai/code/session` and remove what you
   find.
