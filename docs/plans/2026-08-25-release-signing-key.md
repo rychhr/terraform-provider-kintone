@@ -19,23 +19,22 @@ or publishing the private key, passphrase, and revocation certificate.
 
 The repository release workflow now binds its release job to the `release` Environment. Its read-only
 `validate` predecessor validates tags before signing secrets are available, and the release job checks the
-exact normalized production fingerprint before GoReleaser runs. These repository controls do not complete
-the external Environment, protection-rule, secret, Registry, or release checkpoints.
+exact normalized production fingerprint before GoReleaser runs.
 
-## Owner-performed external operations
+The external Environment and Registry public-key registration are also complete. The Environment's measured
+configuration has sole reviewer `rychhr` (GitHub ID `786618`), `prevent_self_review=false`,
+`can_admins_bypass=false`, a `v*` tag deployment policy, and secret names `GPG_PRIVATE_KEY` and
+`GPG_PASSPHRASE`; secret values were not read back. The Registry long GPG Key ID
+`925F019641552B8E` was checked against the final 16 hexadecimal digits of the verified full public-export
+fingerprint. These completed controls do not complete the offline recovery, workflow-merge, or release
+checkpoints.
+
+## Remaining owner operations
 
 1. Create and verify the independently stored AES-256 encrypted offline recovery copy, retaining its
    recovery passphrase in a separate recovery record. Do not record physical storage locations in the
    repository.
-2. Create the dedicated GitHub release Environment; add `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` only there;
-   configure the owner as its sole required reviewer; disable `Allow administrators to bypass configured
-   protection rules`; and read the reviewer, bypass setting, and secret names back. GitHub documents that
-   required review protects Environment secrets from a job until approval, while administrators can bypass
-   Environment protection rules unless that setting is disabled.
-3. Register the ASCII-armored public key for fingerprint
-   `E94B0DA8102D1D1AB8A5D01E925F019641552B8E` in Terraform Registry User Settings > Signing Keys, then
-   read the registered public key and fingerprint back.
-4. Before the first release, generate a disposable test tag only if the release process specifically
+2. Before the first release, generate a disposable test tag only if the release process specifically
    authorizes it, approve the Environment request as owner, and confirm the resulting checksum signature is
    made by the expected fingerprint. Do not publish or push a tag without the explicit approval required by
    repository policy.
@@ -69,10 +68,10 @@ conclusions in an owner-controlled record; it never records secrets or physical 
 
 ## First-release gate
 
-No real provider release is authorized by this plan alone. The owner must complete every external operation,
-the Environment-bound workflow must be merged and verified, and the draft artifact must pass signature
-verification before a human publishes it. Registry registration, offline recovery, Environment approval, and
-the first real release remain incomplete until the owner explicitly performs and verifies them.
+No real provider release is authorized by this plan alone. The owner must complete the offline recovery
+operation, the Environment-bound workflow must be merged and verified, and the draft artifact must pass
+signature verification before a human publishes it. The offline recovery and first real release remain
+incomplete until the owner explicitly performs and verifies them.
 
 ## References
 

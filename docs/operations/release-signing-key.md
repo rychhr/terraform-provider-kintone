@@ -91,40 +91,41 @@ fingerprint comparison, test signing, and verification from a third public-only 
 does not prove that the separate offline recovery copy exists or is readable; that is a separate owner
 checkpoint.
 
-## Configure the GitHub release Environment
+## GitHub release Environment
 
-The release job must use a dedicated GitHub Environment, not repository- or organization-level signing
-secrets. Configure that Environment as follows:
+The release job uses the dedicated `release` GitHub Environment, not repository- or organization-level
+signing secrets. The measured configuration is:
 
-1. Add `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` as Environment secrets only. Do not enter their values in a
-   workflow file, issue, pull request, or log.
-2. Add the owner as the sole required reviewer, disable `Allow administrators to bypass configured protection
-   rules`, and restrict deployment branches or tags to the release policy.
-3. Read the Environment settings back and verify the sole reviewer, disabled administrator bypass, and the two
-   secret names.
-4. The repository release job already declares the `release` Environment. Its secrets-free, read-only
-   predecessor validates the tag, and the release job checks the exact normalized production fingerprint
-   after import and before GoReleaser runs. Confirm the Environment-bound workflow commit is merged.
-5. Approve a release only after independently checking the tag, workflow revision, and intended release.
+- sole required reviewer: `rychhr` (GitHub ID `786618`);
+- `prevent_self_review=false`;
+- `can_admins_bypass=false`;
+- custom deployment policy restricted to the `v*` tag pattern; and
+- Environment secrets named `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE`.
+
+The secret values were not read back. Do not enter them in a workflow file, issue, pull request, or log. The
+repository release job already declares the `release` Environment. Its secrets-free, read-only predecessor
+validates the tag, and the release job checks the exact normalized production fingerprint after import and
+before GoReleaser runs. The approval boundary becomes active only when the Environment-bound workflow commit
+is merged. Approve a release only after independently checking the tag, workflow revision, and intended
+release.
 
 GitHub documents that a job cannot access Environment secrets until the required reviewer approves it, and
 that secrets should be passed as inputs or environment variables rather than exposed in logs.
 [GitHub's secure-use reference](https://docs.github.com/en/actions/reference/security/secure-use) and
 [secret-use guidance](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)
-are authoritative. The approval boundary is not active until the external Environment, protection rules, and
-secrets are configured and the Environment-bound workflow commit is merged and verified.
+are authoritative. The approval boundary is not active until the Environment-bound workflow commit is merged
+and verified.
 
-## Register the public key with Terraform Registry
+## Terraform Registry public-key registration
 
-1. In an isolated temporary keyring, export only the current public key in ASCII armor.
-2. Compare the exported public key's full fingerprint with
-   `E94B0DA8102D1D1AB8A5D01E925F019641552B8E`.
-3. In Terraform Registry, open User Settings > Signing Keys and add the ASCII-armored public key.
-4. Read the Registry entry back and compare its fingerprint with the full production fingerprint.
-5. Delete the temporary public-key export and temporary keyring.
+Registration is complete. The owner verified the full fingerprint of the exact ASCII-armored public-key
+export before upload:
+`E94B0DA8102D1D1AB8A5D01E925F019641552B8E`. The Terraform Registry UI did not display this full
+fingerprint. Instead, it displayed long GPG Key ID `925F019641552B8E`; that ID exactly matches the final
+16 hexadecimal digits of the verified full fingerprint. This is the Registry read-back procedure for the
+current key.
 
-Never upload a private-key export or revocation certificate to the Registry. Registration has not been
-claimed complete by this runbook; it remains an owner checkpoint before the first real release.
+Never upload a private-key export or revocation certificate to the Registry.
 
 ## Normal rotation
 
@@ -168,7 +169,8 @@ checks all of the following without recording secret values or storage locations
 - readability and independent placement of the AES-256 recovery copy and separate recovery-passphrase
   record;
 - a fresh restore-verification exercise for the primary escrow and offline recovery copy;
-- GitHub Environment secret scope, sole owner approval, disabled administrator bypass, and release-job
-  Environment binding;
-- Terraform Registry public-key registration and historical-key retention; and
+- the `release` Environment's sole reviewer, `prevent_self_review=false`,
+  `can_admins_bypass=false`, `v*` tag deployment policy, secret names, and release-job binding;
+- Registry long GPG Key ID `925F019641552B8E` matching the final 16 hexadecimal digits of the verified
+  full public-export fingerprint, plus historical-key retention; and
 - this runbook's rotation and compromise contacts and procedures.

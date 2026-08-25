@@ -9,8 +9,8 @@
 This design establishes the trust and operating model for the OpenPGP key that signs Terraform Registry
 release checksums. It documents the production key, escrow and recovery boundaries, verification evidence,
 and the owner checkpoints required before the first real release. The repository release workflow implements
-the Environment binding and fingerprint guard described here. This design does not create a GitHub
-Environment or Registry signing-key registration, store any secret material, or publish a release.
+the Environment binding and fingerprint guard described here. The GitHub Environment and Terraform Registry
+public-key registration are complete; this design stores no secret material and publishes no release.
 
 ## Trust model and key contract
 
@@ -71,17 +71,22 @@ protection rules by default, so disabling that option is required for the owner-
 [Environment configuration guidance](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
 document those controls.
 
-The repository workflow binds the release job to the `release` Environment. Its read-only `validate`
-predecessor validates the tag before any job can access signing secrets, and the release job rejects an
-imported key whose normalized full fingerprint differs from the production fingerprint before GoReleaser
-runs. The approval boundary remains inactive until the external Environment, protection rules, and secrets
-are configured and the Environment-bound workflow commit is merged.
+The `release` Environment exists. Its measured configuration has `rychhr` (GitHub ID `786618`) as the
+sole required reviewer, `prevent_self_review=false`, `can_admins_bypass=false`, a custom deployment
+policy limited to the `v*` tag pattern, and Environment secrets named `GPG_PRIVATE_KEY` and
+`GPG_PASSPHRASE`. Secret values were not read back. The repository workflow binds the release job to this
+Environment. Its read-only `validate` predecessor validates the tag before any job can access signing
+secrets, and the release job rejects an imported key whose normalized full fingerprint differs from the
+production fingerprint before GoReleaser runs. The approval boundary remains inactive until the
+Environment-bound workflow commit is merged.
 
 ## Registry registration, rotation, and compromise
 
-The owner registers only the ASCII-armored public key with the Terraform Registry. Registry registration is
-an external owner operation and is not complete merely because this design is merged. It precedes the first
-real release.
+The owner has registered only the ASCII-armored public key with the Terraform Registry. Before upload, the
+owner verified the exact public export's full fingerprint as
+`E94B0DA8102D1D1AB8A5D01E925F019641552B8E`. The Registry UI displays the long GPG Key ID
+`925F019641552B8E`, not the full fingerprint; that value exactly equals the final 16 hexadecimal digits of
+the verified full fingerprint. This completed registration precedes the first real release.
 
 For normal rotation, the owner generates and validates a replacement using this same model, creates its
 escrow and independent recovery copy, uploads the replacement public key before signing a release with it,
@@ -100,10 +105,10 @@ need it for historical releases.
 ## First-release completion gate
 
 The first real release remains blocked until the owner has completed and independently read back all of the
-following: the offline AES-256 recovery copy and separate recovery-passphrase record; protected GitHub
-Environment and its owner approval; merge of the Environment-bound workflow; Terraform Registry public-key
-registration; and the final release workflow and artifact verification. A successful local restore test and
-the presence of repository documentation are necessary evidence, not substitutes for those owner operations.
+following: the offline AES-256 recovery copy and separate recovery-passphrase record; merge of the
+Environment-bound workflow; and the final release workflow and artifact verification. A successful local
+restore test and the presence of repository documentation are necessary evidence, not substitutes for those
+owner operations.
 
 ## References
 
