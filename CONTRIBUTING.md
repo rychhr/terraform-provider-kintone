@@ -1,8 +1,50 @@
 # Contributing to the Terraform Provider for kintone
 
-Issues, pull requests, commit messages, documentation, and diagnostics are written in English. Read
-[AGENTS.md](AGENTS.md) for the repository workflow, testing requirements, API constraints, and release
-rules.
+Thank you for contributing. Issues, pull requests, commit messages, documentation, and diagnostics are
+written in English. Read [AGENTS.md](AGENTS.md) for the repository workflow, testing requirements, API
+constraints, release rules, and complete secret-scanning guidance.
+
+## Development setup
+
+Install the Go version declared in [go.mod](go.mod), Terraform, and the tools used by the repository,
+including `golangci-lint`, `tfplugindocs`, GoReleaser, gitleaks, and pre-commit. Install the repository
+hooks once per clone:
+
+```sh
+pre-commit install --hook-type pre-commit --hook-type commit-msg
+```
+
+Development credentials belong in an ignored `.env.local` file loaded through `direnv`. Use a dedicated
+kintone service account with only the permissions required for development. Never commit credentials, API
+tokens, private signing keys, passphrases, or agent session links.
+
+## Build, test, lint, and documentation
+
+The `GNUmakefile` provides the local and CI entry points:
+
+| Command | Purpose |
+| --- | --- |
+| `make build` | Build the provider (`go build -v ./...`). |
+| `make test` | Run unit tests (`go test -v -count=1 ./...`). |
+| `make testacc` | Run acceptance tests. |
+| `make lint` | Run `golangci-lint`. |
+| `make docs` | Regenerate provider documentation with `tfplugindocs`. |
+| `make release-check` | Validate the GoReleaser configuration. |
+| `make release-snapshot` | Build and verify local release artifacts without a signature. |
+
+Run a single client test with:
+
+```sh
+go test -v -count=1 -run 'TestName' ./internal/kintone/
+```
+
+### Acceptance tests
+
+Acceptance tests create real kintone apps. They run only with `TF_ACC=1`, the dedicated development
+credentials `KINTONE_DEV_BASE_URL`, `KINTONE_DEV_USERNAME`, and `KINTONE_DEV_PASSWORD`, and the explicit
+`KINTONE_DEV_ALLOW_ACCEPTANCE_TESTS=1` guard. Never run them against production or fall back to generic
+credentials. Prefix test app names with `tfacc-`, record created apps, and report them for manual cleanup
+because kintone has no app deletion API. Never print credentials in logs or diagnostics.
 
 ## Naming public provider interfaces
 
@@ -66,3 +108,40 @@ Issue #11 must use the following public names for the v0.1.0 app schema:
 
 Provider authentication attributes and data-source output attributes are deliberately not reserved here.
 Issue #11 must choose them under this convention when their schemas are designed.
+
+## Workflow
+
+Create a branch named `<type>/<short-kebab-case-summary>`, where `<type>` is the Conventional Commit type
+that best describes the change: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`, `ci`, `build`, or
+`perf`. Describe the change, not the author or a tool; do not use agent names, usernames, or `agent/`
+prefixes.
+
+Write focused commit messages in English using the Conventional Commits format. Do not include agent session
+links or session trailers in commits, pull requests, issues, or repository files.
+
+Never push directly to `main`. Open a pull request from a branch. The pull request must be in English and
+summarize the behavior change, reference the relevant issue or plan task, list verification commands, and
+call out credentials, manual cleanup, generated documentation, and state-migration effects where relevant.
+Include HCL examples when schemas or resource behavior change.
+
+## Issues and pull requests
+
+Use public issues for reproducible defects, documentation improvements, and feature proposals. Do not use
+them to report vulnerabilities; follow [SECURITY.md](SECURITY.md) instead. Include the provider and
+Terraform versions, a minimal configuration when applicable, the observed and expected behavior, and
+environment details with all credentials and other sensitive values removed.
+
+Before requesting review, run the checks appropriate to the change and inspect the complete diff. Regenerate
+documentation with `make docs` when provider schemas or documentation inputs change. Pull requests must not
+include generated secrets, local paths, environment-specific hostnames, private repository names, or
+agent-session links.
+
+## Secret handling
+
+Keep `.env.local` and all credentials out of version control. Never place a private signing key or its
+passphrase in the repository, an issue, a pull request, a workflow artifact, or a log. Run the documented
+gitleaks checks with `--redact`; `gitleaks dir` can read ignored local environment files.
+
+If a scanner reports a genuine secret, remove it and rotate the credential. Do not silence the finding. A
+false positive that must remain requires a documented repository-wide allowance as described in
+[AGENTS.md](AGENTS.md#bypassing-a-hook).

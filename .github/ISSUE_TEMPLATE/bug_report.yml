@@ -1,0 +1,70 @@
+name: Bug report
+description: Report a reproducible problem with the kintone Terraform provider.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: input
+    id: provider-version
+    attributes:
+      label: Provider version
+      description: Enter the version of `rychhr/kintone` you are using.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: terraform-version
+    attributes:
+      label: Terraform version
+      description: Enter the output of `terraform version`.
+      placeholder: 1.9.0
+    validations:
+      required: true
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Minimal configuration
+      description: Provide the smallest redacted Terraform configuration that reproduces the problem. Do not include credentials, tokens, or private URLs.
+      render: hcl
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Reproduction steps
+      description: List the exact steps and commands that reproduce the problem.
+      placeholder: |
+        1. Run `terraform init`.
+        2. Run `terraform apply`.
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: Describe what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual behavior
+      description: Describe what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Optionally provide redacted Terraform logs or error output. Do not include credentials, tokens, or private URLs.
+      render: shell
+    validations:
+      required: false
+  - type: checkboxes
+    id: no-credentials
+    attributes:
+      label: Credential confirmation
+      description: Confirm that this report contains no secrets.
+      options:
+        - label: I confirm that this issue contains no credentials, tokens, private keys, or other secrets.
+          required: true

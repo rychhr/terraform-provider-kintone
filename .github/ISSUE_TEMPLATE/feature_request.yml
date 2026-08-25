@@ -1,0 +1,67 @@
+name: Feature request
+description: Propose an improvement to the kintone Terraform provider.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: input
+    id: provider-version
+    attributes:
+      label: Provider version
+      description: Enter the version of `rychhr/kintone` you are using or plan to use.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: terraform-version
+    attributes:
+      label: Terraform version
+      description: Enter the Terraform version for this proposal.
+      placeholder: 1.9.0
+    validations:
+      required: true
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Minimal configuration
+      description: Provide a minimal redacted configuration that shows the context for the request. Do not include credentials, tokens, or private URLs.
+      render: hcl
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: Explain the problem this feature would solve and who it would help.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-behavior
+    attributes:
+      label: Proposed behavior
+      description: Describe the behavior you would like the provider to support.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe workarounds or alternative solutions you considered.
+    validations:
+      required: true
+  - type: textarea
+    id: expected-hcl
+    attributes:
+      label: Expected HCL
+      description: Show how you expect to configure the proposed behavior. Do not include credentials, tokens, or private URLs.
+      render: hcl
+    validations:
+      required: true
+  - type: checkboxes
+    id: no-credentials
+    attributes:
+      label: Credential confirmation
+      description: Confirm that this request contains no secrets.
+      options:
+        - label: I confirm that this issue contains no credentials, tokens, private keys, or other secrets.
+          required: true
