@@ -153,8 +153,11 @@ The Registry requires these assets per release:
 
 `terraform-registry-manifest.json` declares `version: 1` and `metadata.protocol_versions: ["6.0"]`.
 
-Never place a private signing key or its passphrase in the repository, an issue, a pull request, a workflow
-artifact, or a log.
+Never place a private signing key, its passphrase, or its revocation certificate in the repository, an issue,
+a pull request, a workflow artifact, or a log. The owner-only escrow, recovery, Environment approval,
+rotation, and compromise procedure is in
+[docs/operations/release-signing-key.md](docs/operations/release-signing-key.md); consult it before any
+production signing-key operation.
 
 ## Workflow
 

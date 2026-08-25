@@ -2,7 +2,9 @@
 
 Thank you for contributing. Issues, pull requests, commit messages, documentation, and diagnostics are
 written in English. Read [AGENTS.md](AGENTS.md) for the repository workflow, testing requirements, API
-constraints, release rules, and complete secret-scanning guidance.
+constraints, release rules, and complete secret-scanning guidance. Maintainers performing a production
+signing-key operation must also follow the
+[release-signing-key runbook](docs/operations/release-signing-key.md).
 
 ## Development setup
 
@@ -16,7 +18,7 @@ pre-commit install --hook-type pre-commit --hook-type commit-msg
 
 Development credentials belong in an ignored `.env.local` file loaded through `direnv`. Use a dedicated
 kintone service account with only the permissions required for development. Never commit credentials, API
-tokens, private signing keys, passphrases, or agent session links.
+tokens, private signing keys, signing-key passphrases, revocation certificates, or agent session links.
 
 ## Build, test, lint, and documentation
 
@@ -138,9 +140,11 @@ agent-session links.
 
 ## Secret handling
 
-Keep `.env.local` and all credentials out of version control. Never place a private signing key or its
-passphrase in the repository, an issue, a pull request, a workflow artifact, or a log. Run the documented
-gitleaks checks with `--redact`; `gitleaks dir` can read ignored local environment files.
+Keep `.env.local` and all credentials out of version control. Never place a private signing key, its
+passphrase, or its revocation certificate in the repository, an issue, a pull request, a workflow artifact,
+or a log. The owner-only operational procedure is in
+[docs/operations/release-signing-key.md](docs/operations/release-signing-key.md). Run the documented gitleaks
+checks with `--redact`; `gitleaks dir` can read ignored local environment files.
 
 If a scanner reports a genuine secret, remove it and rotate the credential. Do not silence the finding. A
 false positive that must remain requires a documented repository-wide allowance as described in
