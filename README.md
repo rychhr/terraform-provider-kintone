@@ -117,8 +117,8 @@ sources in [docs/design/kintone-api-constraints.md](docs/design/kintone-api-cons
 ## Contributing
 
 Issues and pull requests are welcome and are written in English. Please read
-[AGENTS.md](AGENTS.md) first; a `CONTRIBUTING.md` covering the naming convention for resources and
-attributes will be added alongside the first release.
+[AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md) before contributing; the latter defines the
+naming convention for public resources, data sources, and attributes.
 
 Acceptance tests create real apps in a kintone environment and, because there is no deletion API, leave
 them behind for manual cleanup. Never run them against a production subdomain.
