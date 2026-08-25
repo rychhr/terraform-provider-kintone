@@ -102,16 +102,17 @@ secrets. Configure that Environment as follows:
    rules`, and restrict deployment branches or tags to the release policy.
 3. Read the Environment settings back and verify the sole reviewer, disabled administrator bypass, and the two
    secret names.
-4. Ensure the release job explicitly declares that Environment before it references either secret. Environment
-   configuration alone does not protect a job that has not been bound to it.
+4. The repository release job already declares the `release` Environment. Its secrets-free, read-only
+   predecessor validates the tag, and the release job checks the exact normalized production fingerprint
+   after import and before GoReleaser runs. Confirm the Environment-bound workflow commit is merged.
 5. Approve a release only after independently checking the tag, workflow revision, and intended release.
 
 GitHub documents that a job cannot access Environment secrets until the required reviewer approves it, and
 that secrets should be passed as inputs or environment variables rather than exposed in logs.
 [GitHub's secure-use reference](https://docs.github.com/en/actions/reference/security/secure-use) and
 [secret-use guidance](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)
-are authoritative. The repository workflow does not yet declare this Environment, so the approval boundary
-is not active until the follow-on workflow change is merged and verified.
+are authoritative. The approval boundary is not active until the external Environment, protection rules, and
+secrets are configured and the Environment-bound workflow commit is merged and verified.
 
 ## Register the public key with Terraform Registry
 

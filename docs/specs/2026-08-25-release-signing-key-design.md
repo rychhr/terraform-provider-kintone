@@ -8,9 +8,9 @@
 
 This design establishes the trust and operating model for the OpenPGP key that signs Terraform Registry
 release checksums. It documents the production key, escrow and recovery boundaries, verification evidence,
-and the owner checkpoints required before the first real release. It does not change the release workflow,
-create a GitHub Environment or Registry signing-key registration, store any secret material, or publish a
-release.
+and the owner checkpoints required before the first real release. The repository release workflow implements
+the Environment binding and fingerprint guard described here. This design does not create a GitHub
+Environment or Registry signing-key registration, store any secret material, or publish a release.
 
 ## Trust model and key contract
 
@@ -71,9 +71,11 @@ protection rules by default, so disabling that option is required for the owner-
 [Environment configuration guidance](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
 document those controls.
 
-Creating the environment or secrets alone is insufficient: the workflow change that binds the release job to
-the environment is separate repository work. Until both the external configuration and the workflow binding
-are complete and reviewed, the approval boundary is not active.
+The repository workflow binds the release job to the `release` Environment. Its read-only `validate`
+predecessor validates the tag before any job can access signing secrets, and the release job rejects an
+imported key whose normalized full fingerprint differs from the production fingerprint before GoReleaser
+runs. The approval boundary remains inactive until the external Environment, protection rules, and secrets
+are configured and the Environment-bound workflow commit is merged.
 
 ## Registry registration, rotation, and compromise
 
@@ -99,7 +101,7 @@ need it for historical releases.
 
 The first real release remains blocked until the owner has completed and independently read back all of the
 following: the offline AES-256 recovery copy and separate recovery-passphrase record; protected GitHub
-Environment and its owner approval; workflow binding to that Environment; Terraform Registry public-key
+Environment and its owner approval; merge of the Environment-bound workflow; Terraform Registry public-key
 registration; and the final release workflow and artifact verification. A successful local restore test and
 the presence of repository documentation are necessary evidence, not substitutes for those owner operations.
 

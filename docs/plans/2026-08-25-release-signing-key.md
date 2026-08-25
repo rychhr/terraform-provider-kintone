@@ -17,9 +17,10 @@ Registry registration prerequisite, rotation and compromise process, and first-r
 It also links the operations runbook from contributor and agent guidance and explicitly prohibits committing
 or publishing the private key, passphrase, and revocation certificate.
 
-This documentation task does not alter GoReleaser, the release workflow, GitHub settings, Terraform Registry
-settings, or any release artifact. Its completion must not be interpreted as completion of an external owner
-checkpoint.
+The repository release workflow now binds its release job to the `release` Environment. Its read-only
+`validate` predecessor validates tags before signing secrets are available, and the release job checks the
+exact normalized production fingerprint before GoReleaser runs. These repository controls do not complete
+the external Environment, protection-rule, secret, Registry, or release checkpoints.
 
 ## Owner-performed external operations
 
@@ -39,17 +40,19 @@ checkpoint.
    made by the expected fingerprint. Do not publish or push a tag without the explicit approval required by
    repository policy.
 
-## Follow-on repository work
+## Repository workflow contract
 
-1. Bind the release job to the dedicated GitHub Environment and add regression coverage that rejects an
-   imported signing key whose full fingerprint differs from the contract above.
-2. Keep the workflow secret names aligned with the Environment: `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE`.
-   Do not duplicate them as repository or organization secrets.
-3. Review the release workflow after the Environment-binding changes. Validate the tag before the workflow
-   imports secrets, preserve binary detached-signature verification, and ensure no workflow step prints
-   secret values.
-4. Update the design and runbook in the same change whenever the active fingerprint, escrow structure, or
-   release authorization boundary changes.
+The release job is bound to the `release` Environment and depends on a secrets-free, read-only tag-validation
+job. After approval makes Environment secrets available, it imports the signing key and rejects a normalized
+full fingerprint that differs from the production contract before invoking GoReleaser.
+
+The workflow commit must be merged before this control can protect an actual release. Keep the workflow
+secret names aligned with the Environment: `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE`.
+Do not duplicate them as repository or organization secrets.
+
+Update the design and runbook in the same change whenever the active fingerprint, escrow structure, or
+release authorization boundary changes. Preserve tag validation before secret access, binary detached-signature
+verification, and the prohibition on printing secret values.
 
 ## Rotation and incident readiness
 
