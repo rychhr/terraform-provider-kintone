@@ -62,11 +62,14 @@ complete.
 ## Release authorization boundary
 
 The release workflow must consume `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` only as GitHub Environment
-secrets in a dedicated release environment. That environment requires the owner as reviewer, and the release
-job must explicitly reference it. GitHub does not make environment secrets available to a job until required
-review is approved, so this is the approval boundary for releasing a private key to a runner.
-[GitHub's secure-use guidance](https://docs.github.com/en/actions/reference/security/secure-use) documents
-that behavior.
+secrets in a dedicated release environment. That environment requires the owner as its sole reviewer and has
+`Allow administrators to bypass configured protection rules` disabled; the release job must explicitly
+reference it. GitHub does not make environment secrets available to a job until required review is approved,
+so this is the approval boundary for releasing a private key to a runner. Administrators bypass Environment
+protection rules by default, so disabling that option is required for the owner-only boundary.
+[GitHub's secure-use guidance](https://docs.github.com/en/actions/reference/security/secure-use) and
+[Environment configuration guidance](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
+document those controls.
 
 Creating the environment or secrets alone is insufficient: the workflow change that binds the release job to
 the environment is separate repository work. Until both the external configuration and the workflow binding

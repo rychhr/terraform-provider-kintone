@@ -98,9 +98,10 @@ secrets. Configure that Environment as follows:
 
 1. Add `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` as Environment secrets only. Do not enter their values in a
    workflow file, issue, pull request, or log.
-2. Add the owner as the required reviewer for the Environment and restrict deployment branches or tags to
-   the release policy.
-3. Read the Environment settings back and verify both the reviewer requirement and the two secret names.
+2. Add the owner as the sole required reviewer, disable `Allow administrators to bypass configured protection
+   rules`, and restrict deployment branches or tags to the release policy.
+3. Read the Environment settings back and verify the sole reviewer, disabled administrator bypass, and the two
+   secret names.
 4. Ensure the release job explicitly declares that Environment before it references either secret. Environment
    configuration alone does not protect a job that has not been bound to it.
 5. Approve a release only after independently checking the tag, workflow revision, and intended release.
@@ -166,6 +167,7 @@ checks all of the following without recording secret values or storage locations
 - readability and independent placement of the AES-256 recovery copy and separate recovery-passphrase
   record;
 - a fresh restore-verification exercise for the primary escrow and offline recovery copy;
-- GitHub Environment secret scope, required owner approval, and release-job Environment binding;
+- GitHub Environment secret scope, sole owner approval, disabled administrator bypass, and release-job
+  Environment binding;
 - Terraform Registry public-key registration and historical-key retention; and
 - this runbook's rotation and compromise contacts and procedures.

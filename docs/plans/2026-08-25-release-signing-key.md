@@ -27,8 +27,10 @@ checkpoint.
    recovery passphrase in a separate recovery record. Do not record physical storage locations in the
    repository.
 2. Create the dedicated GitHub release Environment; add `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` only there;
-   configure the owner as required reviewer; and read the configuration back. GitHub documents that required
-   review protects Environment secrets from a job until approval.
+   configure the owner as its sole required reviewer; disable `Allow administrators to bypass configured
+   protection rules`; and read the reviewer, bypass setting, and secret names back. GitHub documents that
+   required review protects Environment secrets from a job until approval, while administrators can bypass
+   Environment protection rules unless that setting is disabled.
 3. Register the ASCII-armored public key for fingerprint
    `E94B0DA8102D1D1AB8A5D01E925F019641552B8E` in Terraform Registry User Settings > Signing Keys, then
    read the registered public key and fingerprint back.
@@ -58,9 +60,9 @@ revocation and Registry-contact procedure in the runbook, and replaces the key r
 the affected private material.
 
 An annual owner audit confirms the key identity and fingerprint, item separation and owner-only vault access,
-offline-recovery readability, current Environment reviewer and secret scope, Registry key presence, and the
-restore-verification exercise. The audit records only dates and pass/fail conclusions in an owner-controlled
-record; it never records secrets or physical storage locations.
+offline-recovery readability, the sole Environment reviewer, disabled administrator bypass, secret scope,
+Registry key presence, and the restore-verification exercise. The audit records only dates and pass/fail
+conclusions in an owner-controlled record; it never records secrets or physical storage locations.
 
 ## First-release gate
 
