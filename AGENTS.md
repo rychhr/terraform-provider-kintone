@@ -23,6 +23,13 @@ resources. Each minor gets its own design document before implementation starts.
 Every artifact in this repository — code comments, diagnostics, documentation, commit messages, issues, and
 pull requests — is written in English. Chat responses to the user are in Japanese.
 
+## Local maintainer guidance
+
+Before doing repository work, if `AGENTS.local.md` exists at the repository root, read it in full after this
+file and follow it as additional local maintainer guidance. Local guidance may refine task-tracking workflow,
+but it never weakens this repository's public-information, secret-handling, push, or infrastructure-safety
+rules.
+
 ## Commands
 
 The `GNUmakefile` keeps local and CI entry points aligned. Release snapshots build the complete Registry
@@ -162,6 +169,10 @@ production signing-key operation.
 ## Workflow
 
 - Never push directly to `main`. Work on a branch and open a pull request.
+- Treat public GitHub Issues as an inbox for reproducible defects, documentation improvements, feature
+  proposals, and discussions that benefit users or contributors. Keep maintainer-originated investigation,
+  design exploration, release preparation, and implementation task breakdown outside public GitHub Issues
+  unless there is a clear reason for public collaboration.
 - Name branches `<type>/<short-kebab-case-summary>` using the Conventional Commit type that best describes
   the change (`feat/`, `fix/`, `docs/`, `test/`, `refactor/`, `chore/`, `ci/`, `build/`, `perf/`). Describe
   the change, not the author or the tool — no `agent/` prefixes, usernames, or agent names.
@@ -173,13 +184,16 @@ production signing-key operation.
   published once stays retrievable by SHA even after the text is edited. For commits the rule is enforced
   by the hooks described under [Secret scanning](#secret-scanning); a pull request or issue body is outside
   git and is on you.
-- Pull requests and issues are written in English. A pull request should summarize the behavior change,
-  reference the relevant issue or plan task, list the verification commands that were run, and call out
-  credentials, manual cleanup, generated documentation, or state-migration effects. Include HCL examples
-  when schemas or resource behavior change.
+- Pull requests and public issues are written in English. A pull request should summarize the behavior
+  change, reference any public GitHub Issue it resolves, list the verification commands that were run, and
+  call out credentials, manual cleanup, generated documentation, or state-migration effects. A pull request
+  does not need a public Issue when the work originated outside the public inbox. Include HCL examples when
+  schemas or resource behavior change.
 - Repository-facing specifications and implementation plans belong under `docs/specs/` and `docs/plans/`.
   Never create or commit agent-, tool-, or skill-internal planning artifacts, including files under
-  `docs/superpowers/`. Rewrite durable conclusions as repository-facing documents before staging them.
+  `docs/superpowers/`. Publish only settled conclusions that users or contributors need; review every
+  private-to-public transfer deliberately, rewrite the relevant conclusions as repository-facing documents,
+  and exclude working notes, rejected alternatives, and non-public roadmap details before staging them.
 - Specs and plans are conclusion-based documents. Never record review-fix history or round-by-round
   changelogs inside them; log each review round's resolution as a pull request comment (what changed, plus
   the commit hash) and squash the branch into logical commits before merge.

@@ -16,3 +16,6 @@
 
 # Claude Code local files
 .claude/
+
+# Local agent instructions
+/AGENTS.local.md
