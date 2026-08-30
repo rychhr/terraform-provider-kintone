@@ -83,11 +83,53 @@ fingerprint_step=$(step_block release 'Verify imported GPG fingerprint')
 [ -n "$fingerprint_step" ] || fail 'release job must contain the fingerprint verification step'
 assert_contains "$fingerprint_step" "EXPECTED_GPG_FINGERPRINT: $expected_fingerprint" 'fingerprint verification must record the production fingerprint'
 assert_contains "$fingerprint_step" 'IMPORTED_GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}' 'fingerprint verification must read the import action fingerprint'
-assert_contains "$fingerprint_step" "tr -d '[:space:]'" 'fingerprint verification must remove whitespace'
-assert_contains "$fingerprint_step" "tr '[:lower:]' '[:upper:]'" 'fingerprint verification must normalize case'
-assert_contains "$fingerprint_step" 'imported_fingerprint=$(normalize_fingerprint "$IMPORTED_GPG_FINGERPRINT")' 'fingerprint verification must normalize the imported fingerprint'
-assert_contains "$fingerprint_step" 'expected_fingerprint=$(normalize_fingerprint "$EXPECTED_GPG_FINGERPRINT")' 'fingerprint verification must normalize the expected fingerprint'
-assert_contains "$fingerprint_step" '"$imported_fingerprint" != "$expected_fingerprint"' 'fingerprint verification must reject an unexpected imported fingerprint'
+
+# Execute the workflow's actual inline guard, not a copy of its implementation.
+# Keep the extraction scoped to this step's indented literal run block.
+fingerprint_script=$(printf '%s\n' "$fingerprint_step" | awk '
+	$0 == "        run: |" { in_script = 1; next }
+	in_script && /^          / { sub(/^          /, ""); print; next }
+	in_script && /^[[:space:]]*$/ { print; next }
+	in_script { exit }
+')
+[ -n "$fingerprint_script" ] || fail 'fingerprint verification must contain an inline run script'
+
+assert_fingerprint_status() {
+	fingerprint_case=$1
+	candidate_fingerprint=$2
+	expected_status=$3
+	# No credentials or shell startup configuration are inherited by the guard.
+	# Ubuntu's default run shell uses Bash with errexit enabled.
+	if fingerprint_output=$(env -i PATH="$PATH" \
+		EXPECTED_GPG_FINGERPRINT="$expected_fingerprint" \
+		IMPORTED_GPG_FINGERPRINT="$candidate_fingerprint" \
+		bash --noprofile --norc -e -c "$fingerprint_script" 2>&1); then
+		fingerprint_status=0
+	else
+		fingerprint_status=$?
+	fi
+	if [ "$fingerprint_status" -ne "$expected_status" ]; then
+		printf 'fingerprint case %s: expected exit %s, got %s\n' \
+			"$fingerprint_case" "$expected_status" "$fingerprint_status" >&2
+		printf '%s\n' "$fingerprint_output" >&2
+		fail 'fingerprint guard behavior is incorrect'
+	fi
+}
+
+lowercase_fingerprint=$(printf '%s' "$expected_fingerprint" | tr '[:upper:]' '[:lower:]')
+spaced_fingerprint=$(printf ' \t%s\n ' "$expected_fingerprint")
+grouped_fingerprint=$(printf '%s' "$expected_fingerprint" | sed 's/..../& /g')
+normalized_fingerprint=$(printf ' \t%s\n ' "$lowercase_fingerprint")
+assert_fingerprint_status matching "$expected_fingerprint" 0
+assert_fingerprint_status lowercase "$lowercase_fingerprint" 0
+assert_fingerprint_status whitespace "$spaced_fingerprint" 0
+assert_fingerprint_status grouped "$grouped_fingerprint" 0
+assert_fingerprint_status lowercase-and-whitespace "$normalized_fingerprint" 0
+assert_fingerprint_status mismatched '0000000000000000000000000000000000000000' 1
+assert_fingerprint_status empty '' 1
+assert_fingerprint_status whitespace-only '   ' 1
+
+printf '%s\n' 'fingerprint guard behavior tests passed'
 
 signing_secret_references=$(grep -nE 'GPG_(PRIVATE_KEY|PASSPHRASE)' "$workflow" || true)
 signing_secret_reference_count=$(printf '%s\n' "$signing_secret_references" | sed '/^$/d' | wc -l | tr -d '[:space:]')
@@ -98,7 +140,7 @@ import_signing_secret_reference_count=$(printf '%s\n' "$import_signing_secret_re
 
 import_step_line=$(grep -nF 'id: import_gpg' "$workflow" | cut -d: -f1)
 import_action_line=$(grep -nF 'uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd' "$workflow" | cut -d: -f1)
-fingerprint_check_line=$(grep -nF '"$imported_fingerprint" != "$expected_fingerprint"' "$workflow" | cut -d: -f1)
+fingerprint_check_line=$(grep -nF '      - name: Verify imported GPG fingerprint' "$workflow" | cut -d: -f1)
 goreleaser_line=$(grep -nF 'goreleaser/goreleaser-action@' "$workflow" | cut -d: -f1)
 [ -n "$import_step_line" ] || fail 'GPG import step ID is missing'
 [ -n "$import_action_line" ] || fail 'pinned GPG import action is missing'

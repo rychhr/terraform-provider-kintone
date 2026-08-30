@@ -21,6 +21,10 @@ assert_rejects() {
 		printf '%s\n' "$output" >&2
 		exit 1
 	fi
+	if [ -n "${3:-}" ] && ! printf '%s\n' "$output" | grep -F -- "$3" >/dev/null; then
+		printf 'unexpected rejection for %s mutation:\n%s\n' "$name" "$output" >&2
+		exit 1
+	fi
 }
 
 bracket_secret_in_validate="$fixture_root/bracket-secret-in-validate.yml"
@@ -58,5 +62,22 @@ wrong_fingerprint_output="$fixture_root/wrong-fingerprint-output.yml"
 sed 's/steps.import_gpg.outputs.fingerprint/steps.incorrect_gpg_import.outputs.fingerprint/' \
 	"$workflow" >"$wrong_fingerprint_output"
 assert_rejects wrong-fingerprint-output "$wrong_fingerprint_output"
+
+missing_fingerprint_rejection="$fixture_root/missing-fingerprint-rejection.yml"
+sed 's/^            exit 1$/            :/' "$workflow" >"$missing_fingerprint_rejection"
+assert_rejects missing-fingerprint-rejection "$missing_fingerprint_rejection" \
+	'fingerprint case mismatched: expected exit 1, got 0'
+
+inverted_fingerprint_comparison="$fixture_root/inverted-fingerprint-comparison.yml"
+sed 's/"$imported_fingerprint" != "$expected_fingerprint"/"$imported_fingerprint" = "$expected_fingerprint"/' \
+	"$workflow" >"$inverted_fingerprint_comparison"
+assert_rejects inverted-fingerprint-comparison "$inverted_fingerprint_comparison" \
+	'fingerprint case matching: expected exit 0, got 1'
+
+missing_fingerprint_normalization="$fixture_root/missing-fingerprint-normalization.yml"
+sed 's/imported_fingerprint=$(normalize_fingerprint "$IMPORTED_GPG_FINGERPRINT")/imported_fingerprint=$IMPORTED_GPG_FINGERPRINT/' \
+	"$workflow" >"$missing_fingerprint_normalization"
+assert_rejects missing-fingerprint-normalization "$missing_fingerprint_normalization" \
+	'fingerprint case lowercase: expected exit 0, got 1'
 
 printf '%s\n' 'release workflow mutation tests passed'
