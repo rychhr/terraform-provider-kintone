@@ -60,10 +60,13 @@ fail closed.
 
 ## Signing and secret handling
 
-The release workflow imports `GPG_PRIVATE_KEY` with `GPG_PASSPHRASE` only after tag validation succeeds.
-The import action exposes the key fingerprint to GoReleaser, which invokes GnuPG in batch mode and produces
-a detached, non-armored signature for the checksum artifact. The workflow never prints either secret and
-requires only the repository-scoped `GITHUB_TOKEN` with `contents: write`.
+The read-only tag-validation job uses no signing secrets. Its dependent release job imports
+`GPG_PRIVATE_KEY` with `GPG_PASSPHRASE` only after validation succeeds and the protected `release`
+Environment is approved. It checks the imported key's normalized full fingerprint against the expected
+production identity before exposing the fingerprint to GoReleaser. GoReleaser invokes GnuPG in batch mode
+and produces a detached, non-armored checksum signature. Only the release job has `contents: write`;
+neither secret is printed. The [signing-key design](2026-08-25-release-signing-key-design.md) defines the
+authorization and key-transition boundaries.
 
 The verifier requires the signature by default, rejects ASCII armor, and runs `gpg --verify` against the
 checksum file. A signature that exists but cannot be verified by a key in the active GnuPG keyring is a
@@ -75,17 +78,18 @@ The workflow has no manual trigger and runs only for `v*` tag pushes. Checkout f
 selected from `go.mod`, and the steps execute in this order:
 
 1. validate the tag and its ancestry;
-2. import the GPG private key;
-3. run GoReleaser v2.18.0;
-4. verify the generated `dist/` artifacts in signature-required mode.
+2. wait for approval of the protected `release` Environment;
+3. import the GPG private key and verify its complete normalized fingerprint;
+4. run GoReleaser v2.18.0;
+5. verify the generated `dist/` artifacts in signature-required mode.
 
 GoReleaser always creates a draft GitHub release and does not generate a changelog. The workflow never
 publishes or undrafts a release. A failed post-upload verification may therefore leave a draft containing
 invalid or incomplete assets; a maintainer inspects or deletes that draft manually. Keeping the failed
 draft is safer than adding automated cleanup that could target the wrong release.
 
-Concurrency is grouped by tag ref and does not cancel an in-progress release. Workflow permissions are
-limited to `contents: write`.
+Concurrency is grouped by tag ref and does not cancel an in-progress release. Workflow permissions default
+to `contents: read`; only the Environment-bound release job elevates to `contents: write`.
 
 ## Snapshot behavior
 
@@ -126,7 +130,9 @@ on malformed inputs or missing external commands.
 
 ## Validation
 
-Shell regression tests create isolated Git repositories and synthetic release artifacts. Tag tests cover
+`make test-release` runs shell regression tests locally and in CI. Workflow checks cover permissions,
+Environment binding, secret placement, and fingerprint ordering, including rejected mutations. Tests
+create isolated Git repositories and synthetic release artifacts. Tag tests cover
 valid releases, prereleases, build metadata, malformed SemVer, unreachable commits, and branch collisions.
 Artifact tests cover a valid binary signature plus each documented archive, checksum, manifest, and
 signature failure mode. The repository-level checks are GoReleaser v2.18.0 `check` and snapshot builds,
