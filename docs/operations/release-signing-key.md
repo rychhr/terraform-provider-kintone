@@ -1,12 +1,12 @@
 # Release Signing Key Operations
 
-## Purpose and non-negotiable boundary
+## Public contract and private records
 
-This runbook is for the sole owner of the Terraform Registry release signing key. It records the operational
-procedure and public trust anchor without containing any secret value or physical storage location. Do not
-copy the private key, its passphrase, the revocation certificate, recovery passphrases, or any plaintext
-export into Git, GitHub, chat, tickets, pull requests, workflow artifacts, logs, shell history, or a shared
-vault.
+This document describes the public signing identity and the controls required for release signing. Keep
+maintainer-specific access records, escrow configuration, recovery locations, and completion evidence in
+private maintainer records, not in this repository or public issues. Never include a private key,
+passphrase, revocation certificate, or plaintext recovery export in Git, tickets, chat, workflow artifacts,
+logs, or shell history.
 
 ## Production key identity
 
@@ -17,160 +17,96 @@ vault.
 | Algorithm | RSA 4096-bit |
 | Expiration | None |
 | Intended use | Sign release checksums only; no encryption or authentication use |
-| Primary-key capability | `[SC]` (signing and the required primary-key certification capability) |
-| Access | Owner only |
+| Primary-key capability | `[SC]` (signing and primary-key certification) |
 
-Always compare the full fingerprint, never a short key ID. The Terraform Registry requires the matching
-public key and a signed release checksum file; its signing-key instructions require an ASCII-armored public
-key at User Settings > Signing Keys. [HashiCorp's provider publishing documentation](https://developer.hashicorp.com/terraform/registry/providers/publishing)
-is the authoritative Registry procedure.
+Compare the full fingerprint of a public-key export before registration or use. A Registry-displayed
+Key ID is a registration read-back aid, not proof of full-fingerprint equality. Upload only the
+ASCII-armored public key, never a private-key export or revocation certificate.
+[HashiCorp's provider publishing documentation](https://developer.hashicorp.com/terraform/registry/providers/publishing)
+defines the Registry artifact and public-key requirements.
 
-## Generation or replacement-key preparation
+## Recovery requirements
 
-Perform key generation only on an owner-controlled system. Create a new temporary directory, restrict it to
-the owner, set `GNUPGHOME` to that directory, and use GnuPG's interactive full key-generation flow. Select
-an RSA sign-only key, 4096 bits, no expiration, and this exact UID:
+Private signing material must be accessible only to the designated release owner. Keep the private-key export,
+its passphrase, and the revocation certificate separately protected. Maintain an independently encrypted
+AES-256 offline recovery bundle and a separate recovery-passphrase record. Recovery must remain possible
+when the primary credential service or device is unavailable; do not keep the only means of decrypting a
+backup on that backup medium.
 
-```text
-terraform-provider-kintone release signing <786618+rychhr@users.noreply.github.com>
-```
+Verify recovery after creation or replacement and at least annually:
 
-Enter the passphrase only at GnuPG's interactive prompt. Do not pass it through command-line arguments,
-environment variables, shell input redirection, a file, or an automated generator. Confirm the public
-listing has the expected sign/certification capability and record the full fingerprint before any export.
-GnuPG's `--full-generate-key` is the interactive flow, and GnuPG creates a revocation certificate alongside
-a generated key. [GnuPG OpenPGP key management](https://gnupg.org/documentation/manuals/gnupg/OpenPGP-Key-Management.html)
-documents both operations.
+1. Decrypt the recovery bundle in an owner-controlled, permission-restricted temporary location.
+2. Import only the private-key export into a new empty temporary keyring. Do not import a revocation
+   certificate during a recovery-signing test. Enter local passphrases interactively, not through command
+   arguments, environment variables, or files.
+3. Compare the restored key's complete fingerprint with the intended production identity.
+4. Sign a disposable payload and verify it in a separate temporary keyring containing only the public key.
+5. Remove temporary plaintext, test files, and keyrings after confirming their exact paths. Ordinary file
+   deletion is not proof of physical media sanitization; avoid synchronized, shared, or backed-up plaintext
+   work locations.
 
-For the current production key, the required fingerprint is
-`E94B0DA8102D1D1AB8A5D01E925F019641552B8E`. A different fingerprint means a replacement key: do not add
-it to the release Environment or Registry until it completes the rotation procedure below.
+Record the result privately. A successful restore exercise proves recovery of the tested backup, not that
+a real release workflow or Registry download has been verified.
 
-## Escrow and offline recovery
+## Release authorization boundary
 
-The current primary escrow is the owner's unshared Personal vault in 1Password. It has these three separate
-items:
+The signing job must use the dedicated `release` GitHub Environment. Configure the release owner as its
+sole required reviewer, allow that owner to review their own release, disable administrator bypass, and
+restrict deployments to the `v*` tag pattern. Keep `GPG_PRIVATE_KEY`
+and `GPG_PASSPHRASE` as Environment secrets, not repository- or organization-level duplicates. Record the
+actual reviewer assignment and access checks privately.
 
-- one Password item holding only the GPG passphrase;
-- one Secure Note holding only the private-key export; and
-- one Secure Note holding only the revocation certificate.
+The read-only `validate` job checks the tag without signing secrets. Only its dependent Environment-bound
+job has `contents: write`. After approval, that job imports the key and compares its normalized full
+fingerprint with the expected value before GoReleaser runs. Do not print secret values or read them back
+to demonstrate that they exist.
 
-Confirm that no person or group other than the owner can access that vault. People who can access a 1Password
-vault can view and copy its items, so sharing the vault would break this model.
-[1Password's vault-access documentation](https://support.1password.com/create-share-vaults/) describes the
-access behavior.
-
-Create an independent offline recovery copy by encrypting a private-key export with AES-256. Store its
-recovery passphrase in a separately controlled recovery record. Do not place that passphrase in the same
-1Password item, offline medium, or record as the encrypted copy. Do not document exact physical locations.
-The recovery copy and primary escrow must be independent so a single service or device failure cannot
-eliminate both.
-
-After exporting, remove every plaintext export and the temporary GnuPG home directory by confirming their
-exact temporary paths and deleting only those paths. Do not rely on a deletion command as proof of media
-sanitization; avoid creating plaintext in synchronized, backed-up, shared, or public locations.
-
-## Restore-verification exercise
-
-Run this exercise after initial escrow, after an escrow or recovery change, and at least annually.
-
-1. Create a fresh, permission-restricted temporary `GNUPGHOME`; verify that it contains no existing keyring.
-2. Restore the private-key export from the escrow under test into that empty keyring. Enter the passphrase
-   interactively. Do not put it in a command, environment variable, input file, or log.
-3. List the imported public identity and compare its complete fingerprint exactly to
-   `E94B0DA8102D1D1AB8A5D01E925F019641552B8E`. Stop on any difference.
-4. Create a disposable test payload and make a detached test signature with the restored private key.
-5. Create a third fresh temporary `GNUPGHOME`, import only an ASCII-armored public-key export, and verify
-   the detached test signature there. The third keyring must not contain secret keys.
-6. Confirm that the result identifies the expected full fingerprint and that verification succeeds.
-7. Remove the disposable payload, signature, plaintext exports, and all temporary keyrings after checking
-   each deletion target. Keep no test keyring for convenience.
-
-This verification has passed for the current primary escrow: restoration into an empty keyring, full
-fingerprint comparison, test signing, and verification from a third public-only keyring all succeeded. It
-does not prove that the separate offline recovery copy exists or is readable; that is a separate owner
-checkpoint.
-
-## GitHub release Environment
-
-The release job uses the dedicated `release` GitHub Environment, not repository- or organization-level
-signing secrets. The measured configuration is:
-
-- sole required reviewer: `rychhr` (GitHub ID `786618`);
-- `prevent_self_review=false`;
-- `can_admins_bypass=false`;
-- custom deployment policy restricted to the `v*` tag pattern; and
-- Environment secrets named `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE`.
-
-The secret values were not read back. Do not enter them in a workflow file, issue, pull request, or log. The
-repository release job already declares the `release` Environment. Its secrets-free, read-only predecessor
-validates the tag, and the release job checks the exact normalized production fingerprint after import and
-before GoReleaser runs. The approval boundary becomes active only when the Environment-bound workflow commit
-is merged. Approve a release only after independently checking the tag, workflow revision, and intended
-release.
-
-GitHub documents that a job cannot access Environment secrets until the required reviewer approves it, and
-that secrets should be passed as inputs or environment variables rather than exposed in logs.
-[GitHub's secure-use reference](https://docs.github.com/en/actions/reference/security/secure-use) and
-[secret-use guidance](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)
-are authoritative. The approval boundary is not active until the Environment-bound workflow commit is merged
-and verified.
-
-## Terraform Registry public-key registration
-
-Registration is complete. The owner verified the full fingerprint of the exact ASCII-armored public-key
-export before upload:
-`E94B0DA8102D1D1AB8A5D01E925F019641552B8E`. The Terraform Registry UI did not display this full
-fingerprint. Instead, it displayed long GPG Key ID `925F019641552B8E`; that ID exactly matches the final
-16 hexadecimal digits of the verified full fingerprint. This is the Registry read-back procedure for the
-current key.
-
-Never upload a private-key export or revocation certificate to the Registry.
+GitHub withholds Environment secrets until the required review succeeds.
+[GitHub's secure-use reference](https://docs.github.com/en/actions/reference/security/secure-use) documents
+this boundary. Approvers must independently check the tag, workflow revision, and intended release before
+releasing secrets to a runner. Review-gated signing is effective only for workflow revisions that contain
+the Environment binding and fingerprint guard.
 
 ## Normal rotation
 
-1. Generate a replacement in a fresh temporary `GNUPGHOME` using the generation procedure and record its
-   new full fingerprint.
-2. Establish separate owner-only 1Password items and a separately encrypted AES-256 offline recovery copy
-   with a separate recovery-passphrase record.
-3. Complete the restore-verification exercise for both the primary escrow and the offline recovery copy.
-4. Add the replacement public key to Terraform Registry before using it. Keep older Registry public keys so
-   consumers can verify historical releases.
-5. Update the protected GitHub Environment secrets after reviewing the replacement fingerprint. Bind only
-   the new pair for future releases.
-6. Update this runbook and the design with the replacement UID and fingerprint in the same reviewed change.
-7. Sign a controlled release only after the Environment approval and artifact verification succeed.
+1. Pause release approvals and ensure no release using the old key remains in flight. Keep signing paused
+   throughout the workflow and secret transition.
+2. Prepare a replacement on an owner-controlled system, record its full fingerprint, establish protected
+   escrow and independent offline recovery, and verify restoration from both sources.
+3. Register the replacement public key before signing a release with it. Retain historical Registry public
+   keys so existing provider versions remain verifiable.
+4. In one reviewed change, update `EXPECTED_GPG_FINGERPRINT` in `.github/workflows/release.yml`,
+   `expected_fingerprint` in `scripts/test-release-workflow.sh`, and the public identity in this document.
+   Update any other documentation that embeds the old identity. Preserve the mismatch guard; do not make
+   it accept both keys merely to ease the transition. Run `make test-release` and merge the change before
+   issuing a release tag for the replacement key.
+5. Update the protected Environment's private-key and passphrase pair from the replacement material
+   verified in step 2 while approvals remain paused. Do not read back or expose secret values.
+6. Resume approvals only after the merged workflow trust anchor and intended Environment key agree.
+   Approve the next intended release, verify the imported fingerprint and draft checksum signature, and
+   inspect logs and assets before publishing. Do not publish a disposable provider version merely to test
+   a key transition.
 
-The Registry supports adding a replacement key and advises retaining prior keys for existing provider
-versions. [HashiCorp's Registry FAQ](https://developer.hashicorp.com/terraform/registry/faq) is the
-authoritative rotation guidance.
+[HashiCorp's Registry FAQ](https://developer.hashicorp.com/terraform/registry/faq) describes replacement-key
+registration and retention of historical public keys.
 
 ## Suspected compromise
 
-1. Stop signing and block the affected GitHub Environment from releasing secrets. Remove or replace affected
-   Environment secrets after preserving the minimum evidence needed for investigation.
-2. Do not paste the private key, passphrase, revocation certificate, or recovery data into an incident issue,
-   ticket, chat, workflow log, or commit.
-3. Import the protected revocation certificate into an owner-controlled temporary keyring only when the
-   compromise decision is confirmed, then publish the resulting revoked public key through the appropriate
-   public distribution channel. GnuPG documents that a revocation certificate must be imported to revoke the
-   key.
-4. Contact HashiCorp for Registry guidance if the GPG key or GitHub account is compromised, then generate and
-   rotate to a replacement key under this runbook.
-5. Retain the historical Registry public key; removing it can prevent verification of old provider versions.
+Stop signing and block access to the affected Environment secrets. Preserve necessary evidence privately
+without copying secret material into incident tickets or logs. Once revocation is authorized, use the
+protected revocation certificate in an isolated owner-controlled keyring and distribute the resulting
+revoked public key through the appropriate channels. This is an incident action, not a routine restore test.
+Contact HashiCorp for Registry-specific guidance and rotate to a replacement key. Coordinate treatment of
+historical Registry keys with HashiCorp rather than deleting them and breaking older provider versions.
 
-## Annual audit
+## Preparation and release verification
 
-At least annually, the owner records a date and pass/fail conclusion in an owner-controlled record and
-checks all of the following without recording secret values or storage locations:
+Signing preparation requires documented access and recovery controls, the intended public-key registration,
+the protected Environment configuration, and a reviewed, tested workflow merged to `main`.
 
-- the UID, full fingerprint, RSA 4096-bit sign-only/no-expiry contract, and `[SC]` capability;
-- owner-only access and the continued separation of the three 1Password items;
-- readability and independent placement of the AES-256 recovery copy and separate recovery-passphrase
-  record;
-- a fresh restore-verification exercise for the primary escrow and offline recovery copy;
-- the `release` Environment's sole reviewer, `prevent_self_review=false`,
-  `can_admins_bypass=false`, `v*` tag deployment policy, secret names, and release-job binding;
-- Registry long GPG Key ID `925F019641552B8E` matching the final 16 hexadecimal digits of the verified
-  full public-export fingerprint, plus historical-key retention; and
-- this runbook's rotation and compromise contacts and procedures.
+Preparation does not authorize a tag push or release publication, and passing fixture tests is not evidence
+of a production signature. For an actual release, separately confirm Environment approval, the full
+imported fingerprint, binary detached checksum signatures, and the absence of secrets in logs and assets.
+Verify draft assets with `scripts/verify-release-artifacts.sh` and a trusted public-only keyring before
+publishing. After publication, verify the Registry-provided signing key and provider download. Keep these
+operational results in private maintainer records.

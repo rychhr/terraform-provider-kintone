@@ -40,6 +40,14 @@ jobs:
           cache-dependency-path: go.sum
       - run: make test
 
+  release-checks:
+    name: Release checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - run: make test-release
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

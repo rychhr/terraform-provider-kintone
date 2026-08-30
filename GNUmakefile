@@ -12,6 +12,12 @@ build:
 test:
 	go test -v -count=1 ./...
 
+# Release guards use disposable repositories, keys, and artifact fixtures only.
+test-release:
+	sh scripts/test-release-workflow.sh
+	sh scripts/test-validate-release-tag.sh
+	sh scripts/test-verify-release-artifacts.sh
+
 # Acceptance tests. These create real kintone apps and, because kintone has no
 # app deletion API, leave them behind for manual cleanup. They require
 # KINTONE_DEV_BASE_URL, KINTONE_DEV_USERNAME, KINTONE_DEV_PASSWORD and the
@@ -37,4 +43,4 @@ release-snapshot:
 	goreleaser release --snapshot --clean --skip=sign
 	VERIFY_RELEASE_SIGNATURE=0 scripts/verify-release-artifacts.sh dist
 
-.PHONY: default build test testacc lint docs release-check release-snapshot
+.PHONY: default build test test-release testacc lint docs release-check release-snapshot

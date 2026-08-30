@@ -39,6 +39,7 @@ artifact matrix and verify it without a signature; tagged releases require signa
 | --- | --- |
 | `make build` | `go build -v ./...` |
 | `make test` | unit tests (`go test -v -count=1 ./...`) |
+| `make test-release` | release workflow, tag, and artifact regression tests with disposable fixtures |
 | `make testacc` | acceptance tests (`TF_ACC=1`, 30m timeout, `./internal/provider/`) |
 | `make lint` | `golangci-lint run` |
 | `make docs` | regenerate provider documentation with `tfplugindocs` |
@@ -161,10 +162,11 @@ The Registry requires these assets per release:
 `terraform-registry-manifest.json` declares `version: 1` and `metadata.protocol_versions: ["6.0"]`.
 
 Never place a private signing key, its passphrase, or its revocation certificate in the repository, an issue,
-a pull request, a workflow artifact, or a log. The owner-only escrow, recovery, Environment approval,
-rotation, and compromise procedure is in
-[docs/operations/release-signing-key.md](docs/operations/release-signing-key.md); consult it before any
-production signing-key operation.
+a pull request, a workflow artifact, or a log. The public signing identity, workflow controls, and key
+transition requirements are in
+[docs/operations/release-signing-key.md](docs/operations/release-signing-key.md). Keep actual access
+assignments, escrow configuration, recovery locations, and completion evidence in private maintainer
+records rather than public repository documents.
 
 ## Workflow
 

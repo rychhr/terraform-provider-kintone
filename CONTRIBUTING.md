@@ -2,9 +2,8 @@
 
 Thank you for contributing. Issues, pull requests, commit messages, documentation, and diagnostics are
 written in English. Read [AGENTS.md](AGENTS.md) for the repository workflow, testing requirements, API
-constraints, release rules, and complete secret-scanning guidance. Maintainers performing a production
-signing-key operation must also follow the
-[release-signing-key runbook](docs/operations/release-signing-key.md).
+constraints, release rules, and complete secret-scanning guidance. Changes to release signing must preserve
+the [public signing contract](docs/operations/release-signing-key.md).
 
 ## Development setup
 
@@ -28,11 +27,15 @@ The `GNUmakefile` provides the local and CI entry points:
 | --- | --- |
 | `make build` | Build the provider (`go build -v ./...`). |
 | `make test` | Run unit tests (`go test -v -count=1 ./...`). |
+| `make test-release` | Test release workflow guards, tags, and artifacts with disposable fixtures. |
 | `make testacc` | Run acceptance tests. |
 | `make lint` | Run `golangci-lint`. |
 | `make docs` | Regenerate provider documentation with `tfplugindocs`. |
 | `make release-check` | Validate the GoReleaser configuration. |
 | `make release-snapshot` | Build and verify local release artifacts without a signature. |
+
+`make test-release` requires Git, GnuPG, jq, zip, unzip, and shasum. CI runs the same target. It uses
+temporary repositories and disposable signing keys, never production credentials or a kintone environment.
 
 Run a single client test with:
 
@@ -142,9 +145,9 @@ agent-session links.
 
 Keep `.env.local` and all credentials out of version control. Never place a private signing key, its
 passphrase, or its revocation certificate in the repository, an issue, a pull request, a workflow artifact,
-or a log. The owner-only operational procedure is in
-[docs/operations/release-signing-key.md](docs/operations/release-signing-key.md). Run the documented gitleaks
-checks with `--redact`; `gitleaks dir` can read ignored local environment files.
+or a log. The [public signing contract](docs/operations/release-signing-key.md) describes workflow and
+key-transition requirements; keep actual access, escrow, and recovery records private. Run the documented
+gitleaks checks with `--redact`; `gitleaks dir` can read ignored local environment files.
 
 If a scanner reports a genuine secret, remove it and rotate the credential. Do not silence the finding. A
 false positive that must remain requires a documented repository-wide allowance as described in
