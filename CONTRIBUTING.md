@@ -2,7 +2,10 @@
 
 Thank you for contributing. Issues, pull requests, commit messages, documentation, and diagnostics are
 written in English. Read [AGENTS.md](AGENTS.md) for the repository workflow, testing requirements, API
-constraints, release rules, and complete secret-scanning guidance. Changes to release signing must preserve
+constraints, and safety rules. Consult the [secret-scanning procedure](docs/operations/secret-scanning.md)
+before installing hooks or scanning changes, and the
+[release artifact requirements](docs/operations/release-artifacts.md) before working on builds or releases.
+Changes to release signing must preserve
 the [public signing contract](docs/operations/release-signing-key.md).
 
 ## Development setup
@@ -151,4 +154,4 @@ gitleaks checks with `--redact`; `gitleaks dir` can read ignored local environme
 
 If a scanner reports a genuine secret, remove it and rotate the credential. Do not silence the finding. A
 false positive that must remain requires a documented repository-wide allowance as described in
-[AGENTS.md](AGENTS.md#bypassing-a-hook).
+[the secret-scanning procedure](docs/operations/secret-scanning.md#bypassing-a-hook).
