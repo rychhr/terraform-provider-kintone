@@ -12,9 +12,15 @@ an executable named `terraform-provider-<TYPE>`, where `<TYPE>` is that last ele
 `rychhr/kintone` the required binary name is therefore `terraform-provider-kintone`. Keep the address and
 the binary name in sync whenever build instructions change.
 
-Credentials are loaded from an ignored `.env.local` through `direnv`; the repository will provide an
-`.env.example` template. Never commit credentials. Use a dedicated kintone service account, since password
-authentication is required for app creation.
+Use Terraform CLI 1.16.0 or later. Build the development executable with
+`go build -o terraform-provider-kintone .`; `make build` checks all packages. Configure a development
+override as shown in [README.md](../../README.md#development) and run `terraform plan` directly.
+
+Credentials are loaded from an ignored `.env.local` through `direnv`; copy the
+[`.env.example`](../../.env.example) template. Never commit credentials. Use a dedicated kintone service
+account, since password authentication is required for app creation through this provider. See the
+[acceptance-test procedure](../../CONTRIBUTING.md#acceptance-tests) for separate development credentials
+and the reusable token-test app.
 
 ## Release and Registry requirements
 

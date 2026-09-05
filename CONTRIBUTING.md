@@ -10,7 +10,7 @@ the [public signing contract](docs/operations/release-signing-key.md).
 
 ## Development setup
 
-Install the Go version declared in [go.mod](go.mod), Terraform, and the tools used by the repository,
+Install the Go version declared in [go.mod](go.mod), Terraform CLI 1.16.0 or later, and the repository tools,
 including `golangci-lint`, `tfplugindocs`, GoReleaser, gitleaks, and pre-commit. Install the repository
 hooks once per clone:
 
@@ -48,11 +48,39 @@ go test -v -count=1 -run 'TestName' ./internal/kintone/
 
 ### Acceptance tests
 
-Acceptance tests create real kintone apps. They run only with `TF_ACC=1`, the dedicated development
-credentials `KINTONE_DEV_BASE_URL`, `KINTONE_DEV_USERNAME`, and `KINTONE_DEV_PASSWORD`, and the explicit
-`KINTONE_DEV_ALLOW_ACCEPTANCE_TESTS=1` guard. Never run them against production or fall back to generic
-credentials. Prefix test app names with `tfacc-`, record created apps, and report them for manual cleanup
-because kintone has no app deletion API. Never print credentials in logs or diagnostics.
+Acceptance tests require explicit approval for the dedicated development environment before each run.
+The guard alone is not approval. Never run against production, use generic provider credentials as a
+fallback, or print credentials in HCL, logs, or diagnostics.
+
+Prepare the ignored `.env.local` using [.env.example](.env.example):
+
+1. Set `KINTONE_DEV_BASE_URL`, `KINTONE_DEV_USERNAME`, and `KINTONE_DEV_PASSWORD` for the dedicated
+   development service account.
+2. Select an existing, published app in that same environment exclusively for token-test reuse. Set its
+   positive decimal ID as `KINTONE_DEV_TOKEN_APP_ID`. Supply its API tokens through
+   `KINTONE_DEV_API_TOKENS` (comma-separated, at most nine), with permission to read app metadata and live
+   general settings. Deploy any token configuration in advance through the normal approved setup process.
+3. Before execution, present the target environment, expected app creations and updates, and manual
+   cleanup needs, and obtain explicit approval under [AGENTS.md](AGENTS.md#remote-infrastructure-change-safety).
+   Set `KINTONE_DEV_ALLOW_ACCEPTANCE_TESTS=1` only for that approved run.
+
+For each approved CLI-version run, select Terraform 1.16.0 or the latest stable version on `PATH`, record
+`terraform version`, and run `make testacc`. The test process rejects missing development configuration,
+a missing or invalid token app ID, or a missing guard before starting the suite; it does not silently skip
+individual live tests. `make testacc` sets `TF_ACC=1`. Ordinary local tests and CI use `TF_ACC=0` and local
+HTTP fixtures; run `TF_ACC=0 make test` under both CLI versions to verify compatibility without live access.
+
+Each successful full acceptance run creates one `tfacc-` app and performs two deployments: creation and
+one combined description/number-precision update. Precision starts at `total_digits=12`,
+`decimal_places=3`, and `rounding_mode=HALF_EVEN`; the update configures only `decimal_places=4` and checks
+that the other values survive and the next plan is empty. Across both CLI-version runs, expect two new
+apps and four deployments. Retain the reported app names and IDs for manual cleanup even when a run fails;
+kintone has no app deletion API.
+
+The API-token test reads `data.kintone_app` for the preselected app with password authentication excluded.
+It checks the ID and retrieved settings without creating, updating, or deploying an app. Reuse that app for
+later runs; the suite never deletes it. Record the exact CLI versions, results, and cleanup inventory after
+execution. The CI acceptance job remains disabled until protected live-test automation is configured.
 
 ## Naming public provider interfaces
 

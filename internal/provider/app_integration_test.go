@@ -208,40 +208,40 @@ func TestAccApp(t *testing.T) {
 	if os.Getenv("TF_ACC") != "1" {
 		t.Skip("set TF_ACC for live acceptance tests")
 	}
-	if os.Getenv("KINTONE_DEV_ALLOW_ACCEPTANCE_TESTS") != "1" {
-		t.Fatal("KINTONE_DEV_ALLOW_ACCEPTANCE_TESTS=1 is required")
-	}
-	for _, pair := range [][2]string{{"KINTONE_DEV_BASE_URL", "KINTONE_BASE_URL"}, {"KINTONE_DEV_USERNAME", "KINTONE_USERNAME"}, {"KINTONE_DEV_PASSWORD", "KINTONE_PASSWORD"}} {
-		value := os.Getenv(pair[0])
-		if value == "" {
-			t.Fatalf("%s is required; generic credentials are never used", pair[0])
-		}
-		t.Setenv(pair[1], value)
-	}
-	t.Setenv("KINTONE_API_TOKENS", "")
+	setAcceptanceEnvironment(t, false)
 	name := fmt.Sprintf("tfacc-app-%d", time.Now().UnixNano())
 	t.Logf("Manual cleanup required for app %s, including after test failure", name)
-	config := func(description string) string {
+	config := func(description, precision string) string {
 		return fmt.Sprintf(`provider "kintone" {}
 resource "kintone_app" "test" {
  name = %q
  description = %q
-}`, name, description)
+ number_precision = { %s }
+}`, name, description, precision)
 	}
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: integrationFactories(),
 		Steps: []resource.TestStep{
-			{Config: config("Acceptance test"), Check: func(state *terraform.State) error {
+			{Config: config("Acceptance test", `total_digits = 12, decimal_places = 3, rounding_mode = "HALF_EVEN"`), Check: func(state *terraform.State) error {
 				app, ok := state.RootModule().Resources["kintone_app.test"]
 				if !ok || app.Primary.ID == "" {
 					return fmt.Errorf("created app ID is missing")
 				}
 				t.Logf("Manual cleanup: app %s (ID %s)", name, app.Primary.ID)
-				return nil
+				return resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("kintone_app.test", "number_precision.total_digits", "12"),
+					resource.TestCheckResourceAttr("kintone_app.test", "number_precision.decimal_places", "3"),
+					resource.TestCheckResourceAttr("kintone_app.test", "number_precision.rounding_mode", "HALF_EVEN"),
+				)(state)
 			}},
 			{ResourceName: "kintone_app.test", ImportState: true, ImportStateVerify: true},
-			{Config: config("Updated acceptance test")},
-			{Config: config("Updated acceptance test"), PlanOnly: true},
+			{Config: config("Updated acceptance test", `decimal_places = 4`), Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr("kintone_app.test", "description", "Updated acceptance test"),
+				resource.TestCheckResourceAttr("kintone_app.test", "number_precision.total_digits", "12"),
+				resource.TestCheckResourceAttr("kintone_app.test", "number_precision.decimal_places", "4"),
+				resource.TestCheckResourceAttr("kintone_app.test", "number_precision.rounding_mode", "HALF_EVEN"),
+			)},
+			{Config: config("Updated acceptance test", `decimal_places = 4`), PlanOnly: true},
 		},
 	})
 }
@@ -305,8 +305,23 @@ func (f *appFixture) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		result = f.live
 	case "PUT /k/v1/preview/app/settings.json":
 		revision, _ := strconv.Atoi(f.preview.Revision)
-		if err := json.NewDecoder(r.Body).Decode(&f.preview); err != nil {
+		var body json.RawMessage
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "invalid JSON", 400)
+			return
+		}
+		var fields map[string]json.RawMessage
+		if err := json.Unmarshal(body, &fields); err != nil {
+			http.Error(w, "invalid object", 400)
+			return
+		}
+		// Require the provider to preserve siblings itself; this fixture does
+		// not model an unmeasured server-side partial-object merge.
+		if _, ok := fields["numberPrecision"]; ok {
+			f.preview.NumberPrecision = kintone.NumberPrecision{}
+		}
+		if err := json.Unmarshal(body, &f.preview); err != nil {
+			http.Error(w, "invalid settings", 400)
 			return
 		}
 		if f.preview.TitleField.SelectionMode == "AUTO" {

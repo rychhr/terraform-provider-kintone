@@ -28,9 +28,15 @@ jobs:
       - run: make build
 
   test:
-    name: Test
+    name: Test (Terraform ${{ matrix.terraform-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        terraform-version: ['1.16.0', latest]
+    env:
+      TF_ACC: '0'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -41,8 +47,9 @@ jobs:
       # Local HTTP fixture tests still execute the real Terraform CLI.
       - uses: hashicorp/setup-terraform@v4
         with:
-          terraform_version: '1.16.0'
+          terraform_version: ${{ matrix.terraform-version }}
           terraform_wrapper: false
+      - run: terraform version
       - run: make test
 
   release-checks:
@@ -95,8 +102,8 @@ jobs:
       fail-fast: false
       matrix:
         terraform-version:
-          - 1.0.*
-          - 1.15.*
+          - '1.16.0'
+          - latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -108,4 +115,5 @@ jobs:
         with:
           terraform_version: ${{ matrix.terraform-version }}
           terraform_wrapper: false
+      - run: terraform version
       - run: make testacc

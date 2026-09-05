@@ -20,7 +20,8 @@ test-release:
 
 # Acceptance tests. These create real kintone apps and, because kintone has no
 # app deletion API, leave them behind for manual cleanup. They require
-# KINTONE_DEV_BASE_URL, KINTONE_DEV_USERNAME, KINTONE_DEV_PASSWORD and the
+# KINTONE_DEV_BASE_URL, KINTONE_DEV_USERNAME, KINTONE_DEV_PASSWORD,
+# KINTONE_DEV_TOKEN_APP_ID, KINTONE_DEV_API_TOKENS and the
 # explicit guard KINTONE_DEV_ALLOW_ACCEPTANCE_TESTS=1. Never run them against a
 # production subdomain.
 testacc:
