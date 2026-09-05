@@ -177,7 +177,9 @@ func (r *appResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanReq
 		}
 	}
 	code := objectString(config.TitleField, "field_code")
-	if mode.ValueString() == "AUTO" && !code.IsNull() {
+	// An unknown expression can resolve to null. Defer this constraint until
+	// Terraform supplies a known code instead of rejecting a valid omission.
+	if mode.ValueString() == "AUTO" && !code.IsNull() && !code.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(path.Root("title_field").AtName("field_code"), "Automatic title selection", "Omit field_code in AUTO mode; observe the selected value in state.")
 	}
 	if mode.ValueString() == "MANUAL" && code.IsNull() {
