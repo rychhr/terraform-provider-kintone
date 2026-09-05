@@ -16,7 +16,7 @@ Every claim carries one marker. They are not interchangeable.
 | --- | --- |
 | `[measured: dev 2026-08-19]` | Observed against this project's development environment on that date, using read-only `GET` requests only. Appendix A lists the requests and their responses. |
 | `[measured: poc]` | Measured against a live kintone environment during the proof-of-concept that preceded this repository, and reported from it. Where the measurement date is known it is given in the text. The proof-of-concept is not part of this repository, so these facts cannot be re-read here — only re-measured. |
-| `[documented: Sn]` | Stated in published Cybozu documentation. `Sn` indexes the source list in Appendix B. Every cited page was fetched and returned HTTP 200 on 2026-08-19. |
+| `[documented: Sn]` | Stated in published Cybozu documentation. `Sn` indexes the source list in Appendix B. Fetch dates are recorded in Appendix B. |
 | `[undocumented]` | The documentation was searched for this and does not state it. An absence claim, not a silence. |
 | `[inferred]` | A conclusion drawn in this repository from the claims around it. Not an API guarantee. |
 
@@ -184,18 +184,23 @@ deployed yet. A provider that reverts to clean up after its own failed deploy de
 An app created by `POST /k/v1/preview/app.json` is assigned a real app ID at creation time, before any
 deploy `[documented: S2]`. Both list and single reads return published apps only — "Note that only
 published Apps can be retrieved" appears on the Get App page as well as the Get Apps page
-`[documented: S8, S16]`. An abandoned create therefore leaves behind an app that no API can see or remove
-`[inferred]`. Whether the app ID it consumed stays occupied is open question 6.
+`[documented: S8, S16]`. An abandoned create is therefore absent from these live metadata reads
+`[inferred]`. This is not invisibility to every API: with a known app ID and app-management permission,
+`GET /k/v1/preview/app/settings.json` addresses its preview settings `[documented: S5]`. It is not a
+preview-app discovery or deletion endpoint. Whether the app ID it consumed stays occupied is open question 6.
 
 What follows for the provider `[inferred]`:
 
 - `Delete` removes the resource from Terraform state and warns that the app must be deleted by hand. It
   never attempts physical deletion, and no future version adds one.
 - No attribute may force replacement. Terraform implements a replacement as destroy-then-create, and a
-  destroy that cannot destroy leaves the old app behind for every apply that touches such an attribute. An
-  attribute that the API cannot change after creation — `space` and `thread`, which exist on the create
-  call and not on the settings PUT — must fail the plan with a diagnostic naming the attribute, not carry a
-  `RequiresReplace` plan modifier `[inferred]`.
+  destroy that cannot destroy leaves the old app behind for every apply that touches such an attribute. A
+  placement attribute that this provider treats as create-only — `space_id` or `thread_id` — must fail
+  the plan with a diagnostic naming the attribute, not carry a `RequiresReplace` plan modifier. This is
+  the provider's scope decision, not an API-wide inability to change placement `[inferred]`.
+  `POST /k/v1/app/move.json` moves an app between ordinary spaces or removes it from a space with
+  `space: null`; guest spaces are unsupported `[documented: S18]`. The provider does not implement this
+  separate move operation.
 - Acceptance tests create real apps that survive the test run. Every acceptance-test app name is prefixed
   `tfacc-`, and the created names are reported so a person can clean them up.
 - A failed or interrupted create is not free. This is the load-bearing reason for the retry policy in
@@ -246,8 +251,9 @@ works only for that app, so a request that creates an app has no app for its tok
 `[inferred]`.
 
 So an API-token-only provider configuration can serve neither app creation nor the app-list data source
-`[inferred]`. A diagnostic that says "this operation requires password authentication" must name the
-operation, because the set is larger than app creation alone.
+`[inferred]`. The password requirement is specific to this provider's supported authentication methods;
+the API also permits session and OAuth authentication for both operations `[documented: S2, S8]`.
+A diagnostic must name the operation and must not imply that the API itself supports only passwords.
 
 ### Two-factor authentication
 
@@ -256,7 +262,7 @@ documentation's own remedy is to use another authentication method, or to prepar
 user with two-factor authentication disabled `[documented: S12]`. This is stated on the Japanese
 authentication page; the English page does not mention two-factor authentication at all `[undocumented]`.
 
-Because app creation requires password authentication and password authentication requires a 2FA-free
+Because app creation through this provider requires password authentication, which requires a 2FA-free
 account, this provider assumes a dedicated service account without 2FA, holding only the app-administration
 permissions it needs `[inferred]`.
 
@@ -489,8 +495,10 @@ kintone behavior.
 
 ## Appendix B — sources
 
-All fetched on 2026-08-19; each returned HTTP 200. Where a fact is documented only in Japanese, the note
-says so at the point of use.
+S1–S17 were fetched on 2026-08-19; each returned HTTP 200. S2 and S5 were rechecked, and S18 was
+fetched, on 2026-09-06 for authentication, preview reads, and placement scope. These documentation checks
+are not live API measurements. Where a fact is documented only in Japanese, the note says so at the point
+of use.
 
 | Id | Page |
 | --- | --- |
@@ -511,6 +519,7 @@ says so at the point of use.
 | S15 | How to avoid kintone REST API limits — https://kintone.dev/en/tutorials/development-productivity/how-to-avoid-kintone-rest-api-limits/ |
 | S16 | Get App — https://kintone.dev/en/docs/kintone/rest-api/apps/get-app/ |
 | S17 | API Tokens (tutorial) — https://kintone.dev/en/tutorials/introduction-to-kintone-customizations/api-tokens/ |
+| S18 | Move App to Space — https://kintone.dev/en/docs/kintone/rest-api/apps/settings/move-app/ |
 
 ## Appendix C — why this note lives in `docs/design/`
 

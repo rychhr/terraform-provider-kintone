@@ -29,7 +29,9 @@ every computed value back to the API.
 Import identifies an app by its string app ID. An empty plan after import is required when the supplied
 HCL agrees with existing values, including the required name. Import does not promise an empty plan
 for contradictory configuration. Placement remains create-only: reject a requested space or thread
-change with an attribute diagnostic rather than forcing replacement.
+change with an attribute diagnostic rather than forcing replacement. This is a provider scope decision;
+the separate [Move App to Space API](https://kintone.dev/en/docs/kintone/rest-api/apps/settings/move-app/)
+supports ordinary-space moves, but is not implemented here.
 
 ## Creation failures and recovery
 
@@ -58,8 +60,9 @@ sensitive and must not appear in diagnostics.
 
 When both complete password credentials and API tokens are supplied, password authentication wins,
 matching the current client. Token-only configuration supports operations that accept tokens; operations
-requiring password authentication return diagnostics naming the operation. Validate incomplete password
-credentials instead of silently changing authentication modes.
+requiring password authentication within the provider's supported methods return diagnostics naming the
+operation. The API itself also supports session and OAuth authentication for creation and listing.
+Validate incomplete password credentials instead of silently changing authentication modes.
 
 Use the established `KINTONE_BASE_URL`, `KINTONE_USERNAME`, and `KINTONE_PASSWORD` environment names.
 `base_url`, `username`, and `password` are strings; `api_tokens` is a list of strings. The token
@@ -77,7 +80,7 @@ is an error for this data source.
 `data.kintone_apps` supports the client's ID, app-code, name, and space filters, reads every matching
 page, and returns app metadata. It does not fetch general settings for each result. No matches produce
 an empty collection; a failed page must not produce apparently successful partial results. Listing
-requires password authentication.
+requires password authentication through this provider.
 
 The single data source takes required `id`. List filters are optional `ids`, `codes`, and `space_ids`
 sets of strings (up to 100 members each) and optional `name` (up to 64 characters). The `apps` result is
@@ -114,8 +117,15 @@ the resource documentation and examples.
 - Count deployments for settings-only changes and assert no deployment for unchanged configuration.
 - Run build, unit tests, and lint for implementation changes. Generate schema documentation and examples
   once schemas exist; compare them with the implemented schema.
-- Run acceptance tests only with dedicated development credentials and the repository's explicit
-  infrastructure-change approval. Record every created `tfacc-` app for manual cleanup.
+- Run local tests with Terraform CLI 1.16.0 and the latest stable CLI; record the exact versions. The
+  minimum supported CLI is 1.16.0; the plugin and Registry protocol remain 6.0.
+- Run acceptance tests only with the complete dedicated development configuration and the repository's
+  explicit infrastructure-change approval. Reuse a preselected published app for a token-only data-source
+  read. The creation test checks number precision 12/3/HALF_EVEN, then updates only decimal places to 4
+  alongside the description, preserving the sibling values and checking an empty plan. Expect one created
+  app and two deployments per successful CLI-version run. Follow the
+  [acceptance-test procedure](../../CONTRIBUTING.md#acceptance-tests) and record every created `tfacc-` app
+  for manual cleanup.
 
 ## Remaining verification and design boundaries
 
@@ -124,7 +134,8 @@ returns a non-empty selected field code for the tested app. On MANUAL-to-AUTO tr
 the code and sending the previous manual code resulted in the automatically selected code. An explicit
 empty code was rejected. Preserve this distinction when finalizing the title-field schema: observed
 AUTO codes must not be assumed to match a configured manual code. The existing client completes nested
-objects before sending them; partial number-precision updates remain unmeasured.
+objects before sending them. Local fixtures verify sibling preservation; the expanded live acceptance
+case for partial number-precision configuration remains unexecuted until a separately approved run.
 
 ## Schema and lifecycle details
 

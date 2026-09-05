@@ -40,7 +40,10 @@ The build job runs `make build`, preserving parity with local development.
 
 ### Unit tests
 
-The test job runs `make test`, including its cache-bypassing `-count=1` behavior.
+The test job runs `make test` with `TF_ACC=0`, including its cache-bypassing `-count=1` behavior. It uses
+Terraform CLI `1.16.0` and `latest` as a matrix with `fail-fast: false`. `hashicorp/setup-terraform` installs
+each CLI with `terraform_wrapper: false`, and `terraform version` records the resolved version. Tests
+exercise real Terraform against local HTTP fixtures without accessing kintone.
 
 ### Lint
 
@@ -61,20 +64,20 @@ the paths managed by tfplugindocs v0.25.0 and must remain unchanged by generatio
 
 The acceptance-test job is unconditionally skipped with `if: ${{ false }}`. Its job definition retains:
 
-- a Terraform CLI matrix of `1.0.*` and `1.15.*`;
+- a Terraform CLI matrix of `1.16.0` and `latest`;
 - `fail-fast: false` for eventual matrix execution;
-- checkout, Go setup, Terraform CLI setup, and `make testacc` steps; and
+- checkout, Go setup, Terraform CLI setup with no wrapper, version output, and `make testacc` steps; and
 - a job timeout longer than the Make target's 30-minute Go test timeout.
 
-Terraform `1.0.*` is the minimum because protocol version 6 is supported by Terraform CLI 1.0 and later.
-Terraform 1.1 introduced no provider-design incompatibility for this framework-only provider. The only
-framework-related reason to require Terraform 1.1 would be combining framework and SDKv2 provider servers,
-which this clean implementation does not do. Terraform `1.15.*` is the latest stable minor series at the
-time of this design; Terraform 1.16 is prerelease software and is excluded.
+Terraform CLI 1.16.0 is the provider's minimum supported version. The `latest` selector tracks the stable
+release resolved at execution time; record the exact version in job output. This support policy is separate
+from plugin protocol compatibility: the provider and Registry manifest continue to declare protocol 6.0.
 
 Enabling this job later is a separate change. That change must establish an owner for failures, configure
-the three documented development credential secrets, set the explicit acceptance-test guard, prevent
-production targets, and account for apps that require manual cleanup.
+the dedicated development credentials and reusable token-test app settings documented in
+[CONTRIBUTING.md](../../CONTRIBUTING.md#acceptance-tests), set the explicit acceptance-test guard, prevent
+production targets, and account for apps that require manual cleanup. Neither credentials nor token-app
+settings are supplied by the disabled job.
 
 ## Validation
 
@@ -82,7 +85,8 @@ The workflow and generated output are configuration artifacts, so validation use
 rather than a Go unit-test-first cycle:
 
 1. Run actionlint against `.github/workflows/ci.yml` to validate workflow syntax and expressions.
-2. Run `make build`, `make test`, and `make lint` locally.
+2. Run `make build` and `make lint` locally, and `TF_ACC=0 make test` with Terraform 1.16.0 and the latest
+   stable CLI. Record both exact versions.
 3. Run `make docs`, then verify that the generated-documentation cleanliness check succeeds.
 4. Introduce a temporary change under a generated documentation path, verify that the cleanliness check
    fails, and restore the temporary change.
@@ -97,7 +101,6 @@ published to demonstrate those failure paths.
 
 - [Terraform plugin protocol](https://developer.hashicorp.com/terraform/plugin/terraform-plugin-protocol)
 - [Terraform Plugin Framework provider servers](https://developer.hashicorp.com/terraform/plugin/framework/provider-servers)
-- [Terraform v1.1 changelog](https://github.com/hashicorp/terraform/blob/v1.1/CHANGELOG.md)
 - [actions/setup-go](https://github.com/actions/setup-go)
 - [golangci-lint-action](https://github.com/golangci/golangci-lint-action)
 - [hashicorp/setup-terraform](https://github.com/hashicorp/setup-terraform)

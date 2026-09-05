@@ -5,23 +5,23 @@ declaratively. It is intended to be published to the Terraform Registry as `rych
 [terraform-plugin-framework](https://github.com/hashicorp/terraform-plugin-framework) using plugin protocol
 v6.
 
-> **Status: pre-implementation.**
-> This repository is a clean rewrite and does not contain provider code yet. Nothing has been published to
-> the Terraform Registry, so the provider cannot be installed with `terraform init` at this point. Anything
-> below marked *planned* describes the intended v0.1.0 surface, not shipped behavior.
+> **Status: implemented, awaiting Terraform Registry publication.**
+> The provider core, app resource, and data sources are implemented. Nothing has been published to the
+> Registry yet, so use a development override to try the provider locally. The generated documentation
+> below describes the current schema.
 
 ## Requirements
 
-- A Terraform CLI that supports plugin protocol v6.
+- Terraform CLI **1.16.0 or later**. CI tests 1.16.0 and the latest stable release.
 - A kintone subdomain, and an account that may administer apps — see the prerequisites below.
 
 ## kintone prerequisites
 
-Two properties of the kintone REST API affect how you set up and operate this provider. Neither is a choice
-made by the provider.
+The kintone REST API and the provider's supported authentication methods affect setup and operation.
 
-**App creation requires password authentication.** The kintone API accepts an API token for many
-operations, but creating an app is not one of them; it requires password authentication over the
+**App creation through this provider requires password authentication.** The provider supports password
+and API-token authentication. The create API excludes API tokens and also supports session and OAuth
+authentication, which this provider does not implement. Use password authentication over the
 `X-Cybozu-Authorization` header. Accounts with two-factor authentication enabled cannot authenticate this
 way. Use a dedicated service account without 2FA, granted only the app-administration permissions it needs.
 
@@ -34,20 +34,24 @@ App settings are also written in two phases: changes go to kintone's *preview* e
 deployed, so a single `terraform apply` performs a write followed by a deployment that the provider waits
 on.
 
-## Planned usage (v0.1.0)
+## Usage (v0.1.0)
 
 The v0.1.0 release is deliberately a minimal core, so the Registry publishing path is exercised end to end
 before feature work begins:
 
-- provider configuration — password authentication and API-token authentication, configurable in HCL or
-  through the `KINTONE_BASE_URL`, `KINTONE_USERNAME`, and `KINTONE_PASSWORD` environment variables
-- `kintone_app` — an app and its general settings
-- `data.kintone_app` and `data.kintone_apps`
+- [Provider configuration](docs/index.md) — password authentication and API-token authentication,
+  configurable in HCL or through `KINTONE_BASE_URL`, `KINTONE_USERNAME`, `KINTONE_PASSWORD`, and
+  `KINTONE_API_TOKENS`
+- [`kintone_app`](docs/resources/app.md) — an app and its general settings
+- [`data.kintone_app`](docs/data-sources/app.md) — a published app and its settings
+- [`data.kintone_apps`](docs/data-sources/apps.md) — published apps matching filters
 
 Once published, the provider will be required like this:
 
 ```hcl
 terraform {
+  required_version = ">= 1.16.0"
+
   required_providers {
     kintone = {
       source = "rychhr/kintone"
@@ -56,9 +60,8 @@ terraform {
 }
 ```
 
-Resource and attribute schemas are not finalized and are therefore not documented here. Names cannot be
-changed once they are published to the Registry, so they are being settled against a written naming
-convention rather than case by case. Generated provider documentation will accompany the first release.
+The linked generated documentation lists the current schema and examples. Public names follow the
+[naming convention](CONTRIBUTING.md#naming-public-provider-interfaces) and cannot change after publication.
 
 ## Roadmap
 
@@ -75,8 +78,9 @@ Each minor release gets its own design before implementation starts.
 
 ## Development
 
-Once the provider code lands, build it with `go build` and point Terraform at the resulting binary through
-a development override in your Terraform CLI configuration file:
+Build with `go build -o terraform-provider-kintone .` and point Terraform at the resulting binary through
+a development override in your Terraform CLI configuration file. See the
+[development build procedure](docs/operations/release-artifacts.md) for artifact requirements:
 
 ```hcl
 provider_installation {
@@ -120,8 +124,9 @@ Issues and pull requests are welcome and are written in English. Please read
 [AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md) before contributing; the latter defines the
 naming convention for public resources, data sources, and attributes.
 
-Acceptance tests create real apps in a kintone environment and, because there is no deletion API, leave
-them behind for manual cleanup. Never run them against a production subdomain.
+The [acceptance-test procedure](CONTRIBUTING.md#acceptance-tests) describes dedicated development
+credentials, the existing token-test app, explicit approval, and manual cleanup. Never run acceptance
+tests against a production subdomain.
 
 ## License
 
