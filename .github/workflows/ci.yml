@@ -38,6 +38,11 @@ jobs:
           go-version-file: go.mod
           cache: true
           cache-dependency-path: go.sum
+      # Local HTTP fixture tests still execute the real Terraform CLI.
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: '1.16.0'
+          terraform_wrapper: false
       - run: make test
 
   release-checks:
