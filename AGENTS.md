@@ -27,7 +27,7 @@
 Terraform provider for kintone, published to the Terraform Registry as `rychhr/kintone`. Built on
 terraform-plugin-framework (plugin protocol v6) and licensed under MPL-2.0.
 
-**Status: provider core implemented; live acceptance pending.** The repository includes the
+**Status: provider core implemented and verified with live acceptance tests.** The repository includes the
 Terraform-independent API client, provider configuration, the app resource, and app data sources.
 The accepted provider-layer decisions are recorded in
 [the provider-layer design](docs/specs/2026-09-06-provider-layer-design.md). It is a clean
