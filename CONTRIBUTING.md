@@ -114,8 +114,9 @@ Issue #11 must use the following public names for the v0.1.0 app schema:
 - Feature toggles: `thumbnails_enabled`, `bulk_deletion_enabled`, `comments_enabled`,
   `record_duplication_enabled`, `inline_record_editing_enabled`
 
-Provider authentication attributes and data-source output attributes are deliberately not reserved here.
-Issue #11 must choose them under this convention when their schemas are designed.
+Provider configuration attributes are `base_url`, `username`, `password`, and `api_tokens`, as defined in
+the [provider-layer design](docs/specs/2026-09-06-provider-layer-design.md). Data-source filter and output
+attribute names must be chosen under this convention when their schemas are designed.
 
 ## Workflow
 

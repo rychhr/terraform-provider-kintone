@@ -397,9 +397,27 @@ question has a settled half, the settled half is named as such below.
    `MANUAL` `[documented: S3]`. What is not documented is the effect of a partial nested object — whether
    sending `numberPrecision` with one child preserves its siblings or resets them. "Parameters that are
    ignored will not be updated" is stated for the table as a whole and never said to apply recursively
-   `[documented: S3]`. Measure both objects. Measure the read side too: whether a live read returns a
-   non-empty `titleField.code` while `selectionMode` is `AUTO` decides whether an `Optional + Computed`
-   attribute for the code produces a perpetual diff.
+   `[documented: S3]`. Partial `numberPrecision` updates remain unmeasured. The title-field cases below
+   were measured on a disposable development app on 2026-09-06, with two added single-line text fields:
+
+   | Operation | Preview and live result |
+   | --- | --- |
+   | Fresh app, before adding text fields | AUTO with a non-empty record-number field code. |
+   | Add `tfacc_title_a` and `tfacc_title_b`, retaining AUTO | AUTO with `code: "tfacc_title_a"`. |
+   | Set MANUAL with `code: "tfacc_title_b"` | MANUAL with `code: "tfacc_title_b"`. |
+   | Switch to AUTO, omitting `code` | AUTO with `code: "tfacc_title_a"`. |
+   | Set MANUAL to the second field again, then AUTO while sending its code | AUTO with `code: "tfacc_title_a"`; the supplied manual code is not retained. |
+   | Send AUTO with `code: ""` | PUT rejected with HTTP 400 / `CB_VA01`; subsequent preview/live reads retained the preceding title settings and revision. |
+
+   All successful stages were deployed and read back at the matching revision. The empty-code request
+   was not deployed. Number-precision values were unchanged in every observed snapshot
+   `[measured: dev 2026-09-06]`. This establishes a non-empty AUTO read-back for these fixtures, not a
+   general field-selection ordering rule or the behavior of every title-field type.
+
+   A provider must not normalize AUTO's observed code to an empty string or assume that switching to
+   AUTO preserves the previous MANUAL code. A configured code that differs from AUTO's selected code
+   needs an explicit schema policy; silently overwriting a known planned value would violate Terraform
+   plan/state consistency `[inferred from measured behavior]`.
 
    What is known: omitting a **top-level** property of the settings PUT preserves the server's value — the
    proof-of-concept relied on that for `theme`, `firstMonthOfFiscalYear` and the record toggles, and its
